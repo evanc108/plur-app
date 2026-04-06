@@ -19,16 +19,18 @@ struct LoginView: View {
                 TextField("Email", text: $email)
                     .textContentType(.emailAddress)
                     .autocorrectionDisabled()
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.emailAddress)
+                    #endif
                     .padding()
-                    .background(.ultraThinMaterial)
+                    .background(.regularMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
                 SecureField("Password", text: $password)
                     .textContentType(isSignUp ? .newPassword : .password)
                     .padding()
-                    .background(.ultraThinMaterial)
+                    .background(.regularMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 

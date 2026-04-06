@@ -10,7 +10,7 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .automatic) {
                     Button("Sign Out") {
                         Task {
                             try? await authService.signOut()

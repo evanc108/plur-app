@@ -1,4 +1,5 @@
 Secrets.xcconfig
+plur/Services/Secrets.swift
 
 # Xcode
 *.xcuserstate

@@ -7,12 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A0000001284300000000001 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		6048B2CF2F844A0E0038979D /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 6048B2D02F844A0E0038979D /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		60C4FF682F84389D006D4B97 /* plur.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = plur.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A0000002284300000000001 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -28,7 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A0000001284300000000001 /* (null) in Frameworks */,
+				6048B2CF2F844A0E0038979D /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -38,7 +37,6 @@
 		60C4FF5F2F84389D006D4B97 = {
 			isa = PBXGroup;
 			children = (
-				A0000002284300000000001 /* Secrets.xcconfig */,
 				60C4FF6A2F84389D006D4B97 /* plur */,
 				60C4FF692F84389D006D4B97 /* Products */,
 			);
@@ -72,6 +70,7 @@
 			);
 			name = plur;
 			packageProductDependencies = (
+				6048B2D02F844A0E0038979D /* Supabase */,
 			);
 			productName = plur;
 			productReference = 60C4FF682F84389D006D4B97 /* plur.app */;
@@ -101,6 +100,9 @@
 			);
 			mainGroup = 60C4FF5F2F84389D006D4B97;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6048B2CE2F844A0E0038979C /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 60C4FF692F84389D006D4B97 /* Products */;
 			projectDirPath = "";
@@ -134,7 +136,6 @@
 /* Begin XCBuildConfiguration section */
 		60C4FF712F84389E006D4B97 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A0000002284300000000001 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -197,7 +198,6 @@
 		};
 		60C4FF722F84389E006D4B97 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A0000002284300000000001 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -263,7 +263,6 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = plur/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -308,7 +307,6 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = plur/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -362,6 +360,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6048B2CE2F844A0E0038979C /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6048B2D02F844A0E0038979D /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6048B2CE2F844A0E0038979C /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 60C4FF602F84389D006D4B97 /* Project object */;
 }
