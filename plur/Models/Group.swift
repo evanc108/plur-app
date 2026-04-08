@@ -6,15 +6,54 @@ struct RaveGroup: Codable, Identifiable {
     var raveId: Int
     var createdBy: UUID
     var inviteCode: String
+    var eventName: String
+    var venue: String
+    var startDate: Date
+    var endDate: Date
+    var playlistLink: String?
     let createdAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id
-        case name
+        case id, name, venue
         case raveId = "rave_id"
         case createdBy = "created_by"
         case inviteCode = "invite_code"
+        case eventName = "event_name"
+        case startDate = "start_date"
+        case endDate = "end_date"
+        case playlistLink = "playlist_link"
         case createdAt = "created_at"
+    }
+
+    var isPast: Bool {
+        endDate < Date()
+    }
+
+    var dateRangeText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        let start = formatter.string(from: startDate)
+        formatter.dateFormat = "MMM d, yyyy"
+        let end = formatter.string(from: endDate)
+        return "\(start)–\(end)"
+    }
+}
+
+enum RSVPStatus: String, Codable, CaseIterable {
+    case going
+    case maybe
+    case invited
+
+    var label: String {
+        rawValue.capitalized
+    }
+
+    var icon: String {
+        switch self {
+        case .going: "checkmark.circle.fill"
+        case .maybe: "questionmark.circle.fill"
+        case .invited: "envelope.circle.fill"
+        }
     }
 }
 
@@ -23,13 +62,16 @@ struct GroupMember: Codable, Identifiable {
     var groupId: UUID
     var userId: UUID
     var role: GroupRole
+    var rsvpStatus: RSVPStatus
+    var displayName: String
     let joinedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id
+        case id, role
         case groupId = "group_id"
         case userId = "user_id"
-        case role
+        case rsvpStatus = "rsvp_status"
+        case displayName = "display_name"
         case joinedAt = "joined_at"
     }
 }
