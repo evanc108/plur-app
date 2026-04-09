@@ -42,31 +42,34 @@ extension Color {
 // MARK: - Font Tokens
 
 extension Font {
-    static func plurDisplay(_ size: CGFloat = 42) -> Font {
-        .custom("Syne-ExtraBold", size: size)
+    // Display font: Big Shoulders Display (Google Fonts, free)
+    // Add BigShouldersDisplay-ExtraBold.ttf + BigShouldersDisplay-Bold.ttf to plur/Fonts/
+    // and register both names in Info.plist under UIAppFonts.
+    static func plurDisplay(_ size: CGFloat = 44) -> Font {
+        .custom("BigShouldersDisplay-ExtraBold", size: size)
     }
-    static func plurHeading(_ size: CGFloat = 28) -> Font {
-        .custom("Syne-ExtraBold", size: size)
+    static func plurHeading(_ size: CGFloat = 30) -> Font {
+        .custom("BigShouldersDisplay-ExtraBold", size: size)
     }
-    static func plurH2(_ size: CGFloat = 20) -> Font {
-        .custom("Syne-Bold", size: size)
+    static func plurH2(_ size: CGFloat = 22) -> Font {
+        .custom("BigShouldersDisplay-Bold", size: size)
     }
-    static func plurH3(_ size: CGFloat = 16) -> Font {
-        .custom("Syne-Bold", size: size)
+    static func plurH3(_ size: CGFloat = 18) -> Font {
+        .custom("BigShouldersDisplay-Bold", size: size)
     }
-    static func plurBody(_ size: CGFloat = 15) -> Font {
+    static func plurBody(_ size: CGFloat = 17) -> Font {
         .custom("DMSans-Regular", size: size)
     }
-    static func plurBodyBold(_ size: CGFloat = 15) -> Font {
+    static func plurBodyBold(_ size: CGFloat = 17) -> Font {
         .custom("DMSans-SemiBold", size: size)
     }
-    static func plurCaption(_ size: CGFloat = 12) -> Font {
+    static func plurCaption(_ size: CGFloat = 14) -> Font {
         .custom("DMSans-Regular", size: size)
     }
-    static func plurMicro(_ size: CGFloat = 10) -> Font {
+    static func plurMicro(_ size: CGFloat = 12) -> Font {
         .custom("DMSans-SemiBold", size: size)
     }
-    static func plurTiny(_ size: CGFloat = 9) -> Font {
+    static func plurTiny(_ size: CGFloat = 10) -> Font {
         .custom("DMSans-Medium", size: size)
     }
 }

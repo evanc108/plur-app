@@ -1,16 +1,35 @@
+import CoreTransferable
 import SwiftUI
 import PhotosUI
+import UniformTypeIdentifiers
+
+private enum PickedImageTransferError: Error {
+    case importFailed
+}
+
+/// Matches Apple’s Photos picker pattern: image `Data` via `DataRepresentation` with a throwing import.
+private struct PickedImageData: Transferable {
+    let data: Data
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(importedContentType: UTType.image) { data in
+            guard UIImage(data: data) != nil else {
+                throw PickedImageTransferError.importFailed
+            }
+            return PickedImageData(data: data)
+        }
+    }
+}
 
 struct PhotosView: View {
     let party: RaveGroup
     @Bindable var viewModel: PartyViewModel
 
-    @State private var selectedPickerItem: PhotosPickerItem?
+    @State private var selectedPickerItems: [PhotosPickerItem] = []
     @State private var isCompressing = false
+    @State private var isBatchActive = false
     @State private var fullscreenPhoto: Photo?
-    @State private var showCaptionPrompt = false
-    @State private var pendingImageData: Data?
-    @State private var captionText = ""
+    @State private var pickErrorMessage: String?
 
     private var photos: [Photo] {
         viewModel.photos[party.id] ?? []
@@ -25,7 +44,7 @@ struct PhotosView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                if photos.isEmpty && !viewModel.isUploadingPhoto {
+                if photos.isEmpty && !viewModel.isUploadingPhoto && !isBatchActive {
                     emptyState
                 } else {
                     photoGrid
@@ -41,25 +60,28 @@ struct PhotosView: View {
         .task {
             await viewModel.loadPhotos(for: party.id)
         }
-        .onChange(of: selectedPickerItem) { _, item in
-            guard let item else { return }
-            Task { await handlePickedItem(item) }
+        .onChange(of: selectedPickerItems) { _, items in
+            guard !items.isEmpty else { return }
+            let toProcess = items
+            Task { @MainActor in
+                await handlePickedItems(toProcess)
+            }
         }
-        .alert("Add Caption", isPresented: $showCaptionPrompt) {
-            TextField("Caption (optional)", text: $captionText)
-            Button("Upload") {
-                Task { await commitUpload() }
-            }
-            Button("Skip") {
-                captionText = ""
-                Task { await commitUpload() }
-            }
-            Button("Cancel", role: .cancel) {
-                pendingImageData = nil
-                captionText = ""
-            }
+        .alert("Couldn’t add photos", isPresented: Binding(
+            get: { pickErrorMessage != nil },
+            set: { if !$0 { pickErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { pickErrorMessage = nil }
         } message: {
-            Text("Add an optional caption to your photo.")
+            Text(pickErrorMessage ?? "")
+        }
+        .alert("Upload failed", isPresented: Binding(
+            get: { viewModel.photoError != nil },
+            set: { if !$0 { viewModel.photoError = nil } }
+        )) {
+            Button("OK", role: .cancel) { viewModel.photoError = nil }
+        } message: {
+            Text(viewModel.photoError ?? "")
         }
     }
 
@@ -74,7 +96,7 @@ struct PhotosView: View {
             Text("No photos yet")
                 .font(.plurH3())
                 .foregroundStyle(Color.plurMuted)
-            Text("Upload the first photo to start the album")
+            Text("Add photos to start the album")
                 .font(.plurCaption())
                 .foregroundStyle(Color.plurFaint)
             Spacer()
@@ -86,11 +108,11 @@ struct PhotosView: View {
 
     private var photoGrid: some View {
         ScrollView {
-            if viewModel.isUploadingPhoto {
+            if isBatchActive || viewModel.isUploadingPhoto {
                 HStack(spacing: Spacing.xs) {
                     ProgressView()
                         .tint(Color.plurViolet)
-                    Text("Uploading…")
+                    Text("Adding photos…")
                         .font(.plurCaption())
                         .foregroundStyle(Color.plurMuted)
                 }
@@ -128,19 +150,20 @@ struct PhotosView: View {
 
     private var uploadBar: some View {
         PhotosPicker(
-            selection: $selectedPickerItem,
+            selection: $selectedPickerItems,
+            maxSelectionCount: 50,
             matching: .images,
             photoLibrary: .shared()
         ) {
-            Label("Upload Photo", systemImage: "photo.badge.plus")
+            Label("Add Photos", systemImage: "photo.stack.badge.plus")
                 .font(.plurBodyBold())
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Spacing.sm)
                 .background(Color.plurViolet, in: RoundedRectangle(cornerRadius: Radius.pill))
         }
-        .disabled(viewModel.isUploadingPhoto || isCompressing)
-        .opacity((viewModel.isUploadingPhoto || isCompressing) ? 0.5 : 1)
+        .disabled(viewModel.isUploadingPhoto || isCompressing || isBatchActive)
+        .opacity((viewModel.isUploadingPhoto || isCompressing || isBatchActive) ? 0.5 : 1)
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.sm)
         .background(
@@ -216,45 +239,63 @@ struct PhotosView: View {
 
     // MARK: - Helpers
 
-    private func handlePickedItem(_ item: PhotosPickerItem) async {
-        isCompressing = true
-        defer {
+    @MainActor
+    private func handlePickedItems(_ items: [PhotosPickerItem]) async {
+        pickErrorMessage = nil
+        viewModel.photoError = nil
+        isBatchActive = true
+        selectedPickerItems = []
+
+        var prepareFailures = 0
+        for item in items {
+            isCompressing = true
+            let raw: Data?
+            if let picked = try? await item.loadTransferable(type: PickedImageData.self) {
+                raw = picked.data
+            } else {
+                raw = try? await item.loadTransferable(type: Data.self)
+            }
             isCompressing = false
-            selectedPickerItem = nil
+
+            guard let data = raw else {
+                prepareFailures += 1
+                continue
+            }
+            guard let compressed = compressImage(data: data, maxBytes: 2_000_000) else {
+                prepareFailures += 1
+                continue
+            }
+
+            _ = await viewModel.uploadPhoto(to: party.id, imageData: compressed, caption: nil)
         }
 
-        guard let data = try? await item.loadTransferable(type: Data.self) else { return }
-
-        guard let compressed = compressImage(data: data, maxBytes: 2_000_000) else { return }
-        pendingImageData = compressed
-        showCaptionPrompt = true
-    }
-
-    private func commitUpload() async {
-        guard let data = pendingImageData else { return }
-        let caption = captionText.trimmingCharacters(in: .whitespacesAndNewlines)
-        pendingImageData = nil
-        captionText = ""
-        _ = await viewModel.uploadPhoto(to: party.id, imageData: data, caption: caption.isEmpty ? nil : caption)
+        isBatchActive = false
+        if prepareFailures == 1 {
+            pickErrorMessage = "1 photo couldn’t be read or processed."
+        } else if prepareFailures > 1 {
+            pickErrorMessage = "\(prepareFailures) photos couldn’t be read or processed."
+        }
     }
 
     private func compressImage(data: Data, maxBytes: Int) -> Data? {
         guard let uiImage = UIImage(data: data) else { return nil }
+
+        let maxDimension: CGFloat = 1200
+        let scale = min(maxDimension / uiImage.size.width, maxDimension / uiImage.size.height, 1.0)
+        let targetSize = CGSize(width: uiImage.size.width * scale, height: uiImage.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let resized = renderer.image { _ in
+            uiImage.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+
         var quality: CGFloat = 0.85
         while quality > 0.1 {
-            if let jpeg = uiImage.jpegData(compressionQuality: quality), jpeg.count <= maxBytes {
+            if let jpeg = resized.jpegData(compressionQuality: quality), jpeg.count <= maxBytes {
                 return jpeg
             }
             quality -= 0.15
         }
-        let maxDimension: CGFloat = 1200
-        let scale = min(maxDimension / uiImage.size.width, maxDimension / uiImage.size.height, 1.0)
-        let newSize = CGSize(width: uiImage.size.width * scale, height: uiImage.size.height * scale)
-        UIGraphicsBeginImageContextWithOptions(newSize, true, 1.0)
-        uiImage.draw(in: CGRect(origin: .zero, size: newSize))
-        let resized = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        return resized?.jpegData(compressionQuality: 0.7)
+        return resized.jpegData(compressionQuality: 0.1)
     }
 
     private func placeholder(icon: String) -> some View {

@@ -527,7 +527,8 @@ values ('party-photos', 'party-photos', true)
 on conflict (id) do nothing;
 
 -- Allow authenticated group members to upload photos into their group's folder
-create policy if not exists "Members can upload party photos"
+drop policy if exists "Members can upload party photos" on storage.objects;
+create policy "Members can upload party photos"
     on storage.objects for insert to authenticated
     with check (
         bucket_id = 'party-photos' and
@@ -539,12 +540,14 @@ create policy if not exists "Members can upload party photos"
     );
 
 -- Allow anyone to read (bucket is public, but belt-and-suspenders)
-create policy if not exists "Anyone can view party photos"
+drop policy if exists "Anyone can view party photos" on storage.objects;
+create policy "Anyone can view party photos"
     on storage.objects for select to public
     using (bucket_id = 'party-photos');
 
 -- Allow photo owner to delete their uploads
-create policy if not exists "Users can delete own party photos"
+drop policy if exists "Users can delete own party photos" on storage.objects;
+create policy "Users can delete own party photos"
     on storage.objects for delete to authenticated
     using (
         bucket_id = 'party-photos' and
@@ -559,7 +562,415 @@ create index if not exists idx_photos_group_id on photos(group_id);
 create index if not exists idx_photos_user_id on photos(user_id);
 
 -- ============================================================
--- 10. Refresh PostgREST schema cache
+-- 10. Festival schedule (lineups + per-group set selections)
+-- ============================================================
+-- Dummy schedule is keyed by rave_id = 888888 (EDMTrain-style int).
+-- Point a test group's groups.rave_id at 888888 to see the grid in the app.
+
+create table if not exists event_schedules (
+    id uuid primary key default gen_random_uuid(),
+    rave_id int not null unique,
+    timezone text not null,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists schedule_days (
+    id uuid primary key default gen_random_uuid(),
+    schedule_id uuid not null references event_schedules(id) on delete cascade,
+    day_index int not null check (day_index >= 1),
+    label text not null,
+    unique (schedule_id, day_index)
+);
+
+create table if not exists schedule_stages (
+    id uuid primary key default gen_random_uuid(),
+    schedule_id uuid not null references event_schedules(id) on delete cascade,
+    name text not null,
+    sort_order int not null,
+    accent_color text,
+    unique (schedule_id, sort_order)
+);
+
+create table if not exists schedule_slots (
+    id uuid primary key default gen_random_uuid(),
+    schedule_id uuid not null references event_schedules(id) on delete cascade,
+    day_id uuid not null references schedule_days(id) on delete cascade,
+    stage_id uuid not null references schedule_stages(id) on delete cascade,
+    title text not null,
+    start_at timestamptz not null,
+    end_at timestamptz not null,
+    edmtrain_artist_id int,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists set_selections (
+    id uuid primary key default gen_random_uuid(),
+    group_id uuid not null references groups(id) on delete cascade,
+    user_id uuid not null references profiles(id) on delete cascade,
+    slot_id uuid not null references schedule_slots(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    unique (group_id, user_id, slot_id)
+);
+
+create index if not exists idx_schedule_slots_day_start on schedule_slots(day_id, start_at);
+create index if not exists idx_schedule_slots_schedule_day on schedule_slots(schedule_id, day_id);
+create index if not exists idx_set_selections_group_slot on set_selections(group_id, slot_id);
+create index if not exists idx_set_selections_group_user on set_selections(group_id, user_id);
+
+alter table event_schedules enable row level security;
+alter table schedule_days enable row level security;
+alter table schedule_stages enable row level security;
+alter table schedule_slots enable row level security;
+alter table set_selections enable row level security;
+
+drop policy if exists "Authenticated users can read event schedules" on event_schedules;
+create policy "Authenticated users can read event schedules"
+    on event_schedules for select to authenticated using (true);
+
+drop policy if exists "Authenticated users can read schedule days" on schedule_days;
+create policy "Authenticated users can read schedule days"
+    on schedule_days for select to authenticated using (true);
+
+drop policy if exists "Authenticated users can read schedule stages" on schedule_stages;
+create policy "Authenticated users can read schedule stages"
+    on schedule_stages for select to authenticated using (true);
+
+drop policy if exists "Authenticated users can read schedule slots" on schedule_slots;
+create policy "Authenticated users can read schedule slots"
+    on schedule_slots for select to authenticated using (true);
+
+drop policy if exists "Group members can view set selections" on set_selections;
+create policy "Group members can view set selections"
+    on set_selections for select to authenticated
+    using (
+        exists (
+            select 1 from public.group_members gm
+            where gm.group_id = set_selections.group_id and gm.user_id = auth.uid()
+        )
+    );
+
+drop policy if exists "Group members can insert own set selections" on set_selections;
+create policy "Group members can insert own set selections"
+    on set_selections for insert to authenticated
+    with check (
+        auth.uid() = user_id and
+        exists (
+            select 1 from public.group_members gm
+            where gm.group_id = set_selections.group_id and gm.user_id = auth.uid()
+        )
+    );
+
+drop policy if exists "Users can delete own set selections" on set_selections;
+create policy "Users can delete own set selections"
+    on set_selections for delete to authenticated
+    using (auth.uid() = user_id);
+
+-- Dummy Ultra Miami–style grid data (America/New_York, March 2026)
+insert into event_schedules (rave_id, timezone) values (888888, 'America/New_York')
+on conflict (rave_id) do nothing;
+
+do $$
+declare
+    sid uuid;
+    d1 uuid := '22222222-2222-4222-8222-222222222201'::uuid;
+    d2 uuid := '22222222-2222-4222-8222-222222222202'::uuid;
+    d3 uuid := '22222222-2222-4222-8222-222222222203'::uuid;
+    st_main uuid := '33333333-3333-4333-8333-333333333301'::uuid;
+    st_world uuid := '33333333-3333-4333-8333-333333333302'::uuid;
+    st_mega uuid := '33333333-3333-4333-8333-333333333303'::uuid;
+    st_cove uuid := '33333333-3333-4333-8333-333333333304'::uuid;
+    st_live uuid := '33333333-3333-4333-8333-333333333305'::uuid;
+    st_radio uuid := '33333333-3333-4333-8333-333333333306'::uuid;
+    st_grove uuid := '33333333-3333-4333-8333-333333333307'::uuid;
+begin
+    select id into sid from event_schedules where rave_id = 888888 limit 1;
+    if sid is null then
+        return;
+    end if;
+
+    delete from schedule_slots where schedule_id = sid and title = 'AURORA LIVE';
+
+    insert into schedule_days (id, schedule_id, day_index, label) values
+        (d1, sid, 1, 'Fri, Mar 27'),
+        (d2, sid, 2, 'Sat, Mar 28'),
+        (d3, sid, 3, 'Sun, Mar 29')
+    on conflict (schedule_id, day_index) do nothing;
+
+    insert into schedule_stages (id, schedule_id, name, sort_order, accent_color) values
+        (st_main, sid, 'Mainstage', 1, '#8B6B78'),
+        (st_world, sid, 'Worldwide', 2, '#5C7D8A'),
+        (st_mega, sid, 'Resistance Megastructure', 3, '#5A8A72'),
+        (st_cove, sid, 'Resistance The Cove', 4, '#8A7A5C'),
+        (st_live, sid, 'Live Arena', 5, '#7268A0'),
+        (st_radio, sid, 'UMF Radio', 6, '#4F7A8A'),
+        (st_grove, sid, 'Oasis Grove', 7, '#6B6560')
+    on conflict (schedule_id, sort_order) do nothing;
+
+    update schedule_stages set accent_color = v.accent_color, name = v.name
+    from (values
+        (1, 'Mainstage', '#8B6B78'),
+        (2, 'Worldwide', '#5C7D8A'),
+        (3, 'Resistance Megastructure', '#5A8A72'),
+        (4, 'Resistance The Cove', '#8A7A5C'),
+        (5, 'Live Arena', '#7268A0'),
+        (6, 'UMF Radio', '#4F7A8A'),
+        (7, 'Oasis Grove', '#6B6560')
+    ) as v(sort_order, name, accent_color)
+    where schedule_stages.schedule_id = sid and schedule_stages.sort_order = v.sort_order;
+
+    select id into d1 from schedule_days where schedule_id = sid and day_index = 1;
+    select id into d2 from schedule_days where schedule_id = sid and day_index = 2;
+    select id into d3 from schedule_days where schedule_id = sid and day_index = 3;
+    select id into st_main from schedule_stages where schedule_id = sid and sort_order = 1;
+    select id into st_world from schedule_stages where schedule_id = sid and sort_order = 2;
+    select id into st_mega from schedule_stages where schedule_id = sid and sort_order = 3;
+    select id into st_cove from schedule_stages where schedule_id = sid and sort_order = 4;
+    select id into st_live from schedule_stages where schedule_id = sid and sort_order = 5;
+    select id into st_radio from schedule_stages where schedule_id = sid and sort_order = 6;
+    select id into st_grove from schedule_stages where schedule_id = sid and sort_order = 7;
+
+    -- Day 1 sample slots (local times encoded as timestamptz on that calendar day)
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_main, 'FRANK WALKER', '2026-03-27 16:00:00-04', '2026-03-27 16:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'FRANK WALKER' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_main, 'WORSHIP', '2026-03-27 17:00:00-04', '2026-03-27 18:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'WORSHIP' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_world, 'MAR-T', '2026-03-27 16:00:00-04', '2026-03-27 17:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'MAR-T' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_world, 'PRADA2000', '2026-03-27 18:55:00-04', '2026-03-27 19:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'PRADA2000' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_mega, 'TECHNO SET A', '2026-03-27 15:00:00-04', '2026-03-27 17:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'TECHNO SET A' and stage_id = st_mega);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_cove, 'SUNSET HOUR', '2026-03-27 18:00:00-04', '2026-03-27 19:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'SUNSET HOUR' and stage_id = st_cove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_main, 'PLUR OPEN', '2026-03-27 15:00:00-04', '2026-03-27 15:40:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'PLUR OPEN' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_world, 'EARLY BIRD', '2026-03-27 15:10:00-04', '2026-03-27 15:55:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'EARLY BIRD' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_world, 'ZONE 3', '2026-03-27 17:35:00-04', '2026-03-27 18:50:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'ZONE 3' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_world, 'NIGHT SHIFT', '2026-03-27 19:55:00-04', '2026-03-27 21:20:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'NIGHT SHIFT' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_mega, 'DEEP CUT', '2026-03-27 17:05:00-04', '2026-03-27 18:20:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'DEEP CUT' and stage_id = st_mega);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_mega, 'PEAK TECHNO', '2026-03-27 18:30:00-04', '2026-03-27 20:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'PEAK TECHNO' and stage_id = st_mega);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_cove, 'CHILL PAD', '2026-03-27 16:00:00-04', '2026-03-27 17:15:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'CHILL PAD' and stage_id = st_cove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_cove, 'LATE GROOVE', '2026-03-27 19:35:00-04', '2026-03-27 21:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'LATE GROOVE' and stage_id = st_cove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_main, 'PRIME BLOCK', '2026-03-27 18:45:00-04', '2026-03-27 20:15:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'PRIME BLOCK' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_main, 'ENCORE HOUR', '2026-03-27 20:25:00-04', '2026-03-27 21:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'ENCORE HOUR' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_live, 'B2B WARMUP', '2026-03-27 15:30:00-04', '2026-03-27 16:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'B2B WARMUP' and stage_id = st_live);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_live, 'LIVE BAND EDM', '2026-03-27 17:00:00-04', '2026-03-27 18:10:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'LIVE BAND EDM' and stage_id = st_live);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_live, 'ARENA CLOSER', '2026-03-27 19:15:00-04', '2026-03-27 20:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'ARENA CLOSER' and stage_id = st_live);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_radio, 'FIRST AIR', '2026-03-27 15:20:00-04', '2026-03-27 16:10:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'FIRST AIR' and stage_id = st_radio);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_radio, 'DRIVE TIME', '2026-03-27 16:20:00-04', '2026-03-27 17:50:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'DRIVE TIME' and stage_id = st_radio);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_radio, 'SUNSET MIX', '2026-03-27 18:00:00-04', '2026-03-27 19:25:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'SUNSET MIX' and stage_id = st_radio);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_radio, 'CLOSING BROADCAST', '2026-03-27 19:35:00-04', '2026-03-27 21:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'CLOSING BROADCAST' and stage_id = st_radio);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_grove, 'ACOUSTIC BITES', '2026-03-27 15:45:00-04', '2026-03-27 16:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'ACOUSTIC BITES' and stage_id = st_grove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_grove, 'GROVE SESSION', '2026-03-27 16:40:00-04', '2026-03-27 17:55:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'GROVE SESSION' and stage_id = st_grove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_grove, 'FIREPIT SET', '2026-03-27 18:05:00-04', '2026-03-27 19:20:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'FIREPIT SET' and stage_id = st_grove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d1, st_grove, 'LATE GROVE', '2026-03-27 19:30:00-04', '2026-03-27 20:55:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d1 and title = 'LATE GROVE' and stage_id = st_grove);
+
+    -- Day 2
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_main, 'HEADLINER ONE', '2026-03-28 21:00:00-04', '2026-03-28 23:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'HEADLINER ONE' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_world, 'AFTERNOON VIBES', '2026-03-28 14:00:00-04', '2026-03-28 16:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'AFTERNOON VIBES' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_main, 'DAY TWO OPEN', '2026-03-28 15:00:00-04', '2026-03-28 15:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'DAY TWO OPEN' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_main, 'BUILD UP', '2026-03-28 16:00:00-04', '2026-03-28 17:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'BUILD UP' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_main, 'SUNSET MAIN', '2026-03-28 17:45:00-04', '2026-03-28 19:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'SUNSET MAIN' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_main, 'PRIME TIME D2', '2026-03-28 19:15:00-04', '2026-03-28 20:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'PRIME TIME D2' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_world, 'WORLD GROOVE', '2026-03-28 16:15:00-04', '2026-03-28 17:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'WORLD GROOVE' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_world, 'GLOBAL HOUR', '2026-03-28 18:00:00-04', '2026-03-28 19:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'GLOBAL HOUR' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_world, 'LATE WORLD', '2026-03-28 19:45:00-04', '2026-03-28 21:15:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'LATE WORLD' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_mega, 'MEGA WARMUP', '2026-03-28 15:30:00-04', '2026-03-28 17:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'MEGA WARMUP' and stage_id = st_mega);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_mega, 'WAREHOUSE', '2026-03-28 17:15:00-04', '2026-03-28 18:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'WAREHOUSE' and stage_id = st_mega);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_mega, 'MEGA PEAK', '2026-03-28 19:00:00-04', '2026-03-28 20:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'MEGA PEAK' and stage_id = st_mega);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_cove, 'COVE DAY', '2026-03-28 15:00:00-04', '2026-03-28 16:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'COVE DAY' and stage_id = st_cove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_cove, 'COVE NIGHT', '2026-03-28 17:00:00-04', '2026-03-28 18:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'COVE NIGHT' and stage_id = st_cove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_live, 'ARENA D2', '2026-03-28 16:00:00-04', '2026-03-28 17:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'ARENA D2' and stage_id = st_live);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_live, 'LIVE D2 LATE', '2026-03-28 18:00:00-04', '2026-03-28 19:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'LIVE D2 LATE' and stage_id = st_live);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_radio, 'RADIO MATINEE', '2026-03-28 15:15:00-04', '2026-03-28 16:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'RADIO MATINEE' and stage_id = st_radio);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_radio, 'RADIO PRIME', '2026-03-28 17:00:00-04', '2026-03-28 18:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'RADIO PRIME' and stage_id = st_radio);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_grove, 'GROVE D2', '2026-03-28 15:45:00-04', '2026-03-28 17:15:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'GROVE D2' and stage_id = st_grove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d2, st_grove, 'GROVE LATE D2', '2026-03-28 17:30:00-04', '2026-03-28 19:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d2 and title = 'GROVE LATE D2' and stage_id = st_grove);
+
+    -- Day 3
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_main, 'CLOSING SET', '2026-03-29 22:00:00-04', '2026-03-29 23:59:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'CLOSING SET' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_main, 'FINAL DAY KICK', '2026-03-29 16:00:00-04', '2026-03-29 17:15:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'FINAL DAY KICK' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_main, 'LAST SUNSET', '2026-03-29 17:30:00-04', '2026-03-29 19:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'LAST SUNSET' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_main, 'PRE-CLOSE', '2026-03-29 19:15:00-04', '2026-03-29 21:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'PRE-CLOSE' and stage_id = st_main);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_world, 'WORLD FINALE A', '2026-03-29 16:30:00-04', '2026-03-29 18:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'WORLD FINALE A' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_world, 'WORLD FINALE B', '2026-03-29 18:15:00-04', '2026-03-29 19:45:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'WORLD FINALE B' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_world, 'WORLD OUTRO', '2026-03-29 20:00:00-04', '2026-03-29 21:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'WORLD OUTRO' and stage_id = st_world);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_mega, 'MEGA FINALE', '2026-03-29 17:00:00-04', '2026-03-29 19:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'MEGA FINALE' and stage_id = st_mega);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_cove, 'COVE GOODBYE', '2026-03-29 16:00:00-04', '2026-03-29 18:30:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'COVE GOODBYE' and stage_id = st_cove);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_live, 'ARENA SWAN', '2026-03-29 18:00:00-04', '2026-03-29 20:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'ARENA SWAN' and stage_id = st_live);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_radio, 'SIGN-OFF MIX', '2026-03-29 19:00:00-04', '2026-03-29 21:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'SIGN-OFF MIX' and stage_id = st_radio);
+
+    insert into schedule_slots (schedule_id, day_id, stage_id, title, start_at, end_at, edmtrain_artist_id)
+    select sid, d3, st_grove, 'LAST GROVE', '2026-03-29 17:15:00-04', '2026-03-29 19:00:00-04', null
+    where not exists (select 1 from schedule_slots where day_id = d3 and title = 'LAST GROVE' and stage_id = st_grove);
+end $$;
+
+-- ============================================================
+-- 11. Refresh PostgREST schema cache
 -- ============================================================
 -- Supabase's REST/RPC layer caches schema metadata. After changing functions
 -- (like `create_group`), you may need to refresh the cache.

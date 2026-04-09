@@ -17,29 +17,35 @@ final class PartyViewModel {
     var messages: [UUID: [Message]] = [:]
     var photos: [UUID: [Photo]] = [:]
     var pinnedItems: [UUID: [PinnedItem]] = [:]
-    var artists: [UUID: [Artist]] = [:]
-    var savedArtistIDs: Set<Int> = []
-    var friendArtistMap: [Int: String] = [:]
 
-    var showConflictAlert = false
-    var conflictMessage = ""
-    var pendingArtistID: Int?
-    var pendingPartyID: UUID?
+    /// Keyed by EDMTrain `rave_id`.
+    var festivalScheduleByRaveId: [Int: EventScheduleRecord] = [:]
+    var setSelectionsByGroup: [UUID: [SetSelection]] = [:]
+    var scheduleLoadError: String?
 
     var isLoading = false
     var isUploadingPhoto = false
-    var error: String?
+    var chatError: String?
+    var photoError: String?
+    var generalError: String?
+
+    private var seenMessageIDs = Set<UUID>()
 
     var currentUserId: UUID?
     var currentUserDisplayName: String = ""
 
     private let service = PartyService()
+    private let scheduleCache: ScheduleCacheStore
+
+    init(scheduleCache: ScheduleCacheStore) {
+        self.scheduleCache = scheduleCache
+    }
 
     // MARK: - Loading
 
     func loadParties() async {
         isLoading = true
-        error = nil
+        generalError = nil
         do {
             let profile = try await service.fetchCurrentProfile()
             currentUserId = profile.id
@@ -50,23 +56,25 @@ final class PartyViewModel {
             let allMembers = try await service.fetchAllMembers()
             members = Dictionary(grouping: allMembers) { $0.groupId }
         } catch {
-            self.error = error.localizedDescription
+            generalError = error.localizedDescription
         }
         isLoading = false
     }
 
     func loadMessages(for groupId: UUID) async {
         do {
-            messages[groupId] = try await service.fetchMessages(groupId: groupId)
+            let fetched = try await service.fetchMessages(groupId: groupId)
+            messages[groupId] = fetched
+            for msg in fetched { seenMessageIDs.insert(msg.id) }
         } catch {
-            self.error = error.localizedDescription
+            chatError = error.localizedDescription
         }
     }
 
     /// Subscribe to new messages via Supabase Realtime. Blocks until the task is cancelled.
     func observeMessages(for groupId: UUID) async {
         let channel = SupabaseService.client.realtimeV2.channel("messages:\(groupId.uuidString)")
-        let decoder = Self.supabaseDecoder
+        let decoder = SupabaseJSONDecoder.shared
 
         let inserts = channel.postgresChange(
             InsertAction.self,
@@ -79,33 +87,13 @@ final class PartyViewModel {
 
         for await insert in inserts {
             guard let message = try? insert.decodeRecord(as: Message.self, decoder: decoder) else { continue }
-            if !(messages[groupId]?.contains(where: { $0.id == message.id }) ?? false) {
+            if seenMessageIDs.insert(message.id).inserted {
                 messages[groupId, default: []].append(message)
             }
         }
 
         await SupabaseService.client.realtimeV2.removeChannel(channel)
     }
-
-    private static let supabaseDecoder: JSONDecoder = {
-        let decoder = JSONDecoder()
-
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime]
-        let isoFrac = ISO8601DateFormatter()
-        isoFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        decoder.dateDecodingStrategy = .custom { decoder in
-            let container = try decoder.singleValueContainer()
-            let value = try container.decode(String.self)
-            if let date = isoFrac.date(from: value) ?? iso.date(from: value) {
-                return date
-            }
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO8601 date: \(value)")
-        }
-
-        return decoder
-    }()
 
     // MARK: - Invite
 
@@ -127,7 +115,7 @@ final class PartyViewModel {
             try await service.inviteUser(userId: user.id, groupId: partyID)
             members[partyID] = try await service.fetchMembers(groupId: partyID)
         } catch {
-            self.error = error.localizedDescription
+            generalError = error.localizedDescription
         }
     }
 
@@ -164,7 +152,7 @@ final class PartyViewModel {
             try await service.togglePin(messageId: messageID, isPinned: newPinState)
         } catch {
             messages[partyID]![idx].isPinned = !newPinState
-            self.error = error.localizedDescription
+            chatError = error.localizedDescription
         }
     }
 
@@ -172,74 +160,130 @@ final class PartyViewModel {
         messages[partyID]?.filter(\.isPinned) ?? []
     }
 
-    // MARK: - Schedule (local — not DB-backed yet)
+    // MARK: - Festival schedule (Supabase + SwiftData cache)
 
-    func artistsByStage(for partyID: UUID) -> [(stage: String, artists: [Artist])] {
-        guard let all = artists[partyID] else { return [] }
-        let grouped = Dictionary(grouping: all) { $0.stage ?? "Other" }
-        let stageOrder = ["Kinetic Field", "Circuit Grounds", "Cosmic Meadow"]
-        return stageOrder.compactMap { stage in
-            guard let list = grouped[stage] else { return nil }
-            return (stage: stage, artists: list.sorted { ($0.startTime ?? .distantPast) < ($1.startTime ?? .distantPast) })
+    func festivalSchedule(for party: RaveGroup) -> EventScheduleRecord? {
+        festivalScheduleByRaveId[party.raveId]
+    }
+
+    func setSelections(for groupId: UUID) -> [SetSelection] {
+        setSelectionsByGroup[groupId] ?? []
+    }
+
+    func isSlotSelected(_ slotId: UUID, groupId: UUID) -> Bool {
+        guard let uid = currentUserId else { return false }
+        return setSelections(for: groupId).contains { Self.matchesUserSlot($0, userId: uid, slotId: slotId) }
+    }
+
+    /// Up to three initials plus how many additional attendees selected this slot.
+    func attendeeInitials(for slotId: UUID, groupId: UUID) -> (shown: [String], overflow: Int) {
+        let selections = setSelections(for: groupId).filter { $0.slotId == slotId }
+        let nameByUser = Dictionary(uniqueKeysWithValues: (members[groupId] ?? []).map { ($0.userId, $0.displayName) })
+        let initials = selections.map { Self.initials(from: nameByUser[$0.userId] ?? "?") }
+        let maxShow = 3
+        if initials.count <= maxShow { return (initials, 0) }
+        return (Array(initials.prefix(maxShow)), initials.count - maxShow)
+    }
+
+    func loadScheduleData(for party: RaveGroup) async {
+        let rid = party.raveId
+        let gid = party.id
+        scheduleLoadError = nil
+
+        if rid != 0, let cached = try? scheduleCache.cachedSchedule(raveId: rid) {
+            festivalScheduleByRaveId[rid] = cached.normalized()
+        }
+        if let cachedSel = try? scheduleCache.cachedSelections(groupId: gid) {
+            setSelectionsByGroup[gid] = cachedSel
+        }
+
+        guard rid != 0 else { return }
+
+        do {
+            if let remote = try await service.fetchEventSchedule(raveId: rid) {
+                festivalScheduleByRaveId[rid] = remote
+                try? scheduleCache.saveSchedule(remote)
+            } else {
+                festivalScheduleByRaveId[rid] = nil
+            }
+            let remoteSel = try await service.fetchSetSelections(groupId: gid)
+            setSelectionsByGroup[gid] = remoteSel
+            try? scheduleCache.saveSelections(remoteSel, groupId: gid)
+        } catch {
+            scheduleLoadError = error.localizedDescription
         }
     }
 
-    func isArtistSaved(_ artistID: Int) -> Bool {
-        savedArtistIDs.contains(artistID)
-    }
+    func toggleSlotSelection(_ slotId: UUID, in party: RaveGroup) async {
+        let gid = party.id
+        guard let uid = currentUserId else { return }
+        let previous = setSelectionsByGroup[gid] ?? []
+        let wasSelected = previous.contains { Self.matchesUserSlot($0, userId: uid, slotId: slotId) }
 
-    func toggleArtist(_ artist: Artist, in partyID: UUID) {
-        if savedArtistIDs.contains(artist.id) {
-            savedArtistIDs.remove(artist.id)
-            return
-        }
-
-        if let conflict = findConflict(for: artist, in: partyID) {
-            pendingArtistID = artist.id
-            pendingPartyID = partyID
-            conflictMessage = "'\(artist.name)' overlaps with '\(conflict.name)'. Save anyway?"
-            showConflictAlert = true
+        if wasSelected {
+            setSelectionsByGroup[gid] = previous.filter { !Self.matchesUserSlot($0, userId: uid, slotId: slotId) }
         } else {
-            savedArtistIDs.insert(artist.id)
+            var next = previous
+            next.append(SetSelection(id: UUID(), userId: uid, groupId: gid, slotId: slotId, createdAt: Date()))
+            setSelectionsByGroup[gid] = next
+        }
+        cacheSelectionsToDisk(for: gid)
+
+        do {
+            if wasSelected {
+                try await service.deleteSetSelection(groupId: gid, slotId: slotId)
+            } else {
+                let inserted = try await service.insertSetSelection(groupId: gid, slotId: slotId)
+                var next = setSelectionsByGroup[gid] ?? []
+                if let i = next.firstIndex(where: { Self.matchesUserSlot($0, userId: uid, slotId: slotId) }) {
+                    next[i] = inserted
+                }
+                setSelectionsByGroup[gid] = next
+                cacheSelectionsToDisk(for: gid)
+            }
+        } catch {
+            setSelectionsByGroup[gid] = previous
+            try? scheduleCache.saveSelections(previous, groupId: gid)
+            generalError = error.localizedDescription
         }
     }
 
-    func confirmPendingArtist() {
-        if let id = pendingArtistID {
-            savedArtistIDs.insert(id)
-        }
-        pendingArtistID = nil
-        pendingPartyID = nil
+    private func cacheSelectionsToDisk(for groupId: UUID) {
+        try? scheduleCache.saveSelections(setSelectionsByGroup[groupId] ?? [], groupId: groupId)
     }
 
-    private func findConflict(for artist: Artist, in partyID: UUID) -> Artist? {
-        guard let start = artist.startTime, let end = artist.endTime,
-              let allArtists = artists[partyID] else { return nil }
+    private static func matchesUserSlot(_ selection: SetSelection, userId: UUID, slotId: UUID) -> Bool {
+        selection.userId == userId && selection.slotId == slotId
+    }
 
-        return allArtists.first { other in
-            guard other.id != artist.id,
-                  savedArtistIDs.contains(other.id),
-                  let otherStart = other.startTime,
-                  let otherEnd = other.endTime else { return false }
-            return start < otherEnd && end > otherStart
+    private static func initials(from displayName: String) -> String {
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(separator: " ").filter { !$0.isEmpty }
+        if parts.count >= 2 {
+            return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
         }
+        if trimmed.count >= 2 {
+            return String(trimmed.prefix(2)).uppercased()
+        }
+        return String(trimmed.prefix(1)).uppercased()
     }
 
     // MARK: - Send Message
 
     func sendMessage(content: String, in partyID: UUID) async -> Bool {
         guard !content.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        error = nil
+        chatError = nil
         do {
             let msg = try await service.sendMessage(
                 groupId: partyID,
                 content: content,
                 senderName: currentUserDisplayName
             )
+            seenMessageIDs.insert(msg.id)
             messages[partyID, default: []].append(msg)
             return true
         } catch {
-            self.error = error.localizedDescription
+            chatError = error.localizedDescription
             return false
         }
     }
@@ -250,7 +294,7 @@ final class PartyViewModel {
         do {
             photos[groupId] = try await service.fetchPhotos(groupId: groupId)
         } catch {
-            self.error = error.localizedDescription
+            photoError = error.localizedDescription
         }
     }
 
@@ -259,10 +303,12 @@ final class PartyViewModel {
         defer { isUploadingPhoto = false }
         do {
             let photo = try await service.uploadPhoto(groupId: groupId, imageData: imageData, caption: caption)
-            photos[groupId, default: []].insert(photo, at: 0)
+            var list = photos[groupId] ?? []
+            list.insert(photo, at: 0)
+            photos[groupId] = list
             return true
         } catch {
-            self.error = error.localizedDescription
+            photoError = error.localizedDescription
             return false
         }
     }
@@ -272,9 +318,11 @@ final class PartyViewModel {
         let storagePath = pathComponents.count > 1 ? pathComponents[1] : "\(groupId.uuidString)/\(photo.id.uuidString).jpg"
         do {
             try await service.deletePhoto(photoId: photo.id, storagePath: storagePath)
-            photos[groupId]?.removeAll { $0.id == photo.id }
+            var list = photos[groupId] ?? []
+            list.removeAll { $0.id == photo.id }
+            photos[groupId] = list
         } catch {
-            self.error = error.localizedDescription
+            photoError = error.localizedDescription
         }
     }
 
@@ -302,7 +350,7 @@ final class PartyViewModel {
             await loadParties()
             return true
         } catch {
-            self.error = error.localizedDescription
+            generalError = error.localizedDescription
             return false
         }
     }

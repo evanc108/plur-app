@@ -134,9 +134,7 @@ private struct JoinByCodeSection: View {
             Button {
                 isJoining = true
                 Task {
-                    let success = input.localizedCaseInsensitiveContains("plur.app/join/")
-                        ? await viewModel.joinPartyByLink(input)
-                        : await viewModel.joinParty(code: input)
+                    let success = await viewModel.joinPartyByLink(input)
                     isJoining = false
                     if success { showSuccess = true } else { showError = true }
                 }
@@ -188,9 +186,7 @@ private struct ScanQRSection: View {
             QRScannerView { value in
                 scannedValue = value
                 Task {
-                    joinSucceeded = value.localizedCaseInsensitiveContains("plur.app/join/")
-                        ? await viewModel.joinPartyByLink(value)
-                        : await viewModel.joinParty(code: value)
+                    joinSucceeded = await viewModel.joinPartyByLink(value)
                     showResult = true
                 }
             }

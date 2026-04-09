@@ -29,12 +29,21 @@ struct RaveGroup: Codable, Identifiable {
         endDate < Date()
     }
 
+    private static let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f
+    }()
+
+    private static let yearDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d, yyyy"
+        return f
+    }()
+
     var dateRangeText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
-        let start = formatter.string(from: startDate)
-        formatter.dateFormat = "MMM d, yyyy"
-        let end = formatter.string(from: endDate)
+        let start = Self.shortDateFormatter.string(from: startDate)
+        let end = Self.yearDateFormatter.string(from: endDate)
         return "\(start)–\(end)"
     }
 }

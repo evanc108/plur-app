@@ -40,6 +40,12 @@ private struct NewPhoto: @preconcurrency Encodable, Sendable {
     let caption: String?
 }
 
+private struct NewSetSelection: @preconcurrency Encodable, Sendable {
+    let group_id: UUID
+    let user_id: UUID
+    let slot_id: UUID
+}
+
 // MARK: - Service
 
 struct PartyService: Sendable {
@@ -208,11 +214,53 @@ struct PartyService: Sendable {
     }
 
     func deletePhoto(photoId: UUID, storagePath: String) async throws {
-        try await client.storage.from("party-photos")
-            .remove(paths: [storagePath])
         try await client.from("photos")
             .delete()
             .eq("id", value: photoId)
+            .execute()
+        try await client.storage.from("party-photos")
+            .remove(paths: [storagePath])
+    }
+
+    // MARK: - Festival schedule
+
+    /// Nested lineup for one EDMTrain `rave_id`. Returns `nil` when no row exists.
+    func fetchEventSchedule(raveId: Int) async throws -> EventScheduleRecord? {
+        guard raveId != 0 else { return nil }
+        let rows: [EventScheduleRecord] = try await client.from("event_schedules")
+            .select("*, schedule_days(*), schedule_stages(*), schedule_slots(*)")
+            .eq("rave_id", value: raveId)
+            .limit(1)
+            .execute()
+            .value
+        return rows.first.map { $0.normalized() }
+    }
+
+    func fetchSetSelections(groupId: UUID) async throws -> [SetSelection] {
+        try await client.from("set_selections")
+            .select()
+            .eq("group_id", value: groupId)
+            .execute()
+            .value
+    }
+
+    func insertSetSelection(groupId: UUID, slotId: UUID) async throws -> SetSelection {
+        let userId = try await currentUserId()
+        return try await client.from("set_selections")
+            .insert(NewSetSelection(group_id: groupId, user_id: userId, slot_id: slotId))
+            .select()
+            .single()
+            .execute()
+            .value
+    }
+
+    func deleteSetSelection(groupId: UUID, slotId: UUID) async throws {
+        let userId = try await currentUserId()
+        try await client.from("set_selections")
+            .delete()
+            .eq("group_id", value: groupId)
+            .eq("user_id", value: userId)
+            .eq("slot_id", value: slotId)
             .execute()
     }
 }
