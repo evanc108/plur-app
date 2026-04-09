@@ -1,8 +1,12 @@
 import SwiftUI
 
 struct PartiesView: View {
-    @State private var viewModel = PartyViewModel()
+    @State private var viewModel: PartyViewModel
     @State private var activeSheet: ActiveSheet?
+
+    init(scheduleCacheStore: ScheduleCacheStore) {
+        _viewModel = State(initialValue: PartyViewModel(scheduleCache: scheduleCacheStore))
+    }
 
     private enum ActiveSheet: Identifiable {
         case create
@@ -84,9 +88,9 @@ struct PartiesView: View {
     private var emptyState: some View {
         VStack(spacing: Spacing.lg) {
             Spacer()
-            Image(systemName: "person.3")
+            Image(systemName: "sparkles")
                 .font(.system(size: 48))
-                .foregroundStyle(Color.plurFaint)
+                .foregroundStyle(Color.plurViolet.opacity(0.7))
             Text("No Parties Yet")
                 .font(.plurH2())
                 .foregroundStyle(Color.plurGhost)

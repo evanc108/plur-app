@@ -203,8 +203,9 @@ struct BoardView: View {
                     Image(uiImage: QRCodeGenerator.image(for: viewModel.inviteLink(for: party), size: 80))
                         .interpolation(.none)
                         .resizable()
-                        .frame(width: 72, height: 72)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .frame(width: 60, height: 60)
+                        .padding(6)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 10))
                         .onTapGesture { showQRFullScreen = true }
 
                     VStack(alignment: .leading, spacing: Spacing.xs) {
@@ -244,8 +245,8 @@ struct BoardView: View {
 
     private func avatarColor(for name: String) -> Color {
         let colors: [Color] = [.plurViolet, .plurRose, .plurTeal, .plurAmber]
-        let index = abs(name.hashValue) % colors.count
-        return colors[index]
+        let hash = name.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
+        return colors[abs(hash) % colors.count]
     }
 
     private func rsvpColor(_ status: RSVPStatus) -> Color {
@@ -276,11 +277,12 @@ private struct QRFullScreenView: View {
                         .font(.plurH2())
                         .foregroundStyle(Color.plurGhost)
 
-                    Image(uiImage: QRCodeGenerator.image(for: viewModel.inviteLink(for: party), size: 280))
+                    Image(uiImage: QRCodeGenerator.image(for: viewModel.inviteLink(for: party), size: 260))
                         .interpolation(.none)
                         .resizable()
-                        .frame(width: 260, height: 260)
-                        .clipShape(RoundedRectangle(cornerRadius: Radius.thumbnail))
+                        .frame(width: 240, height: 240)
+                        .padding(14)
+                        .background(.white, in: RoundedRectangle(cornerRadius: Radius.thumbnail))
 
                     VStack(spacing: Spacing.xxs) {
                         Text("Party Code")

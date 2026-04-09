@@ -7,6 +7,7 @@ enum AuthMethod {
     case phone
 }
 
+@MainActor
 @Observable
 final class AuthService {
     var isAuthenticated = false

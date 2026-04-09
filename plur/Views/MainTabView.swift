@@ -19,6 +19,8 @@ enum PLURTab: String, CaseIterable, Identifiable {
 }
 
 struct MainTabView: View {
+    let scheduleCacheStore: ScheduleCacheStore
+
     @State private var selected: PLURTab = .home
     @State private var keyboardVisible = false
 
@@ -26,7 +28,7 @@ struct MainTabView: View {
         VStack(spacing: 0) {
             Group {
                 switch selected {
-                case .home: PartiesView()
+                case .home: PartiesView(scheduleCacheStore: scheduleCacheStore)
                 case .search: RavesView()
                 case .inbox: InboxView()
                 case .profile: ProfileView()
@@ -39,11 +41,17 @@ struct MainTabView: View {
             }
         }
         .plurBackground()
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-            keyboardVisible = true
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+            withAnimation(.easeOut(duration: duration)) {
+                keyboardVisible = true
+            }
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            keyboardVisible = false
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+            let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+            withAnimation(.easeOut(duration: duration)) {
+                keyboardVisible = false
+            }
         }
     }
 
@@ -54,6 +62,11 @@ struct MainTabView: View {
                     selected = tab
                 } label: {
                     VStack(spacing: Spacing.xxs) {
+                        Circle()
+                            .fill(Color.plurViolet)
+                            .frame(width: 4, height: 4)
+                            .opacity(selected == tab ? 1 : 0)
+                            .animation(.easeOut(duration: 0.15), value: selected)
                         Image(systemName: tab.icon)
                             .font(.system(size: 22))
                         Text(tab.rawValue)
@@ -65,7 +78,7 @@ struct MainTabView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.top, Spacing.sm)
+        .padding(.top, Spacing.xs)
         .padding(.bottom, Spacing.xs)
         .background(
             Rectangle()

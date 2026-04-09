@@ -33,14 +33,6 @@ struct PartyDetailView: View {
         .toolbarBackground(Color.plurVoid.opacity(0.9), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .alert("Schedule Conflict", isPresented: $viewModel.showConflictAlert) {
-            Button("Cancel", role: .cancel) {}
-            Button("Save Anyway") {
-                viewModel.confirmPendingArtist()
-            }
-        } message: {
-            Text(viewModel.conflictMessage)
-        }
         .preferredColorScheme(.dark)
     }
 
@@ -50,15 +42,15 @@ struct PartyDetailView: View {
         HStack(spacing: Spacing.xxs) {
             ForEach(PartyTab.allCases, id: \.self) { tab in
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.easeOut(duration: 0.18)) {
                         selectedTab = tab
                     }
                 } label: {
                     HStack(spacing: Spacing.xxs) {
                         Image(systemName: tab.icon)
-                            .font(.system(size: 13))
+                            .font(.system(size: 15))
                         Text(tab.rawValue)
-                            .font(.plurMicro())
+                            .font(.plurCaption())
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Spacing.xs)

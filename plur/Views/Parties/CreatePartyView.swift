@@ -24,69 +24,89 @@ struct CreatePartyView: View {
         !eventName.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    @ViewBuilder
+    private var createPartyFormContent: some View {
+        VStack(spacing: Spacing.lg) {
+            partyDetailsSection
+            datesSection
+            optionalSection
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.top, Spacing.md)
+        .padding(.bottom, Spacing.xxxl)
+    }
+
+    @ViewBuilder
+    private var partyDetailsSection: some View {
+        formSection(title: "PARTY") {
+            fieldRow("Party name", text: $name)
+            ravePickerButton
+            fieldRow("Event / Festival", text: $eventName)
+            fieldRow("Venue", text: $venue)
+        }
+    }
+
+    private var ravePickerButton: some View {
+        Button { showEventPicker = true } label: {
+            HStack(spacing: Spacing.xs) {
+                Text("Rave")
+                    .font(.plurBody())
+                    .foregroundStyle(Color.plurGhost)
+                Spacer()
+                if isLoadingEvents && edmEvents.isEmpty {
+                    ProgressView().tint(Color.plurViolet)
+                } else if let selectedEDMEvent {
+                    Text(Self.eventLabel(selectedEDMEvent))
+                        .font(.plurCaption())
+                        .foregroundStyle(Color.plurMuted)
+                        .lineLimit(1)
+                } else {
+                    Text("Select…")
+                        .font(.plurCaption())
+                        .foregroundStyle(Color.plurFaint)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.plurFaint)
+            }
+            .padding(.horizontal, Spacing.sm)
+            .padding(.vertical, Spacing.sm)
+            .background(Color.plurSurface2, in: RoundedRectangle(cornerRadius: Radius.thumbnail))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.thumbnail)
+                    .stroke(Color.plurBorder, lineWidth: 1)
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var datesSection: some View {
+        formSection(title: "DATES") {
+            DatePicker("Start", selection: $startDate, displayedComponents: .date)
+                .font(.plurBody())
+                .foregroundStyle(Color.plurGhost)
+                .tint(Color.plurViolet)
+            DatePicker("End", selection: $endDate, in: startDate..., displayedComponents: .date)
+                .font(.plurBody())
+                .foregroundStyle(Color.plurGhost)
+                .tint(Color.plurViolet)
+        }
+    }
+
+    @ViewBuilder
+    private var optionalSection: some View {
+        formSection(title: "OPTIONAL") {
+            fieldRow("Playlist link", text: $playlistLink, keyboard: .URL)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.plurVoid.ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: Spacing.lg) {
-                        formSection(title: "PARTY") {
-                            fieldRow("Party name", text: $name)
-
-                            Button { showEventPicker = true } label: {
-                                HStack(spacing: Spacing.xs) {
-                                    Text("Rave")
-                                        .font(.plurBody())
-                                        .foregroundStyle(Color.plurGhost)
-                                    Spacer()
-                                    if isLoadingEvents && edmEvents.isEmpty {
-                                        ProgressView().tint(Color.plurViolet)
-                                    } else if let selectedEDMEvent {
-                                        Text(Self.eventLabel(selectedEDMEvent))
-                                            .font(.plurCaption())
-                                            .foregroundStyle(Color.plurMuted)
-                                            .lineLimit(1)
-                                    } else {
-                                        Text("Select…")
-                                            .font(.plurCaption())
-                                            .foregroundStyle(Color.plurFaint)
-                                    }
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(Color.plurFaint)
-                                }
-                                .padding(.horizontal, Spacing.sm)
-                                .padding(.vertical, Spacing.sm)
-                                .background(Color.plurSurface2, in: RoundedRectangle(cornerRadius: Radius.thumbnail))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Radius.thumbnail)
-                                        .stroke(Color.plurBorder, lineWidth: 1)
-                                )
-                            }
-
-                            fieldRow("Event / Festival", text: $eventName)
-                            fieldRow("Venue", text: $venue)
-                        }
-
-                        formSection(title: "DATES") {
-                            DatePicker("Start", selection: $startDate, displayedComponents: .date)
-                                .font(.plurBody())
-                                .foregroundStyle(Color.plurGhost)
-                                .tint(Color.plurViolet)
-                            DatePicker("End", selection: $endDate, in: startDate..., displayedComponents: .date)
-                                .font(.plurBody())
-                                .foregroundStyle(Color.plurGhost)
-                                .tint(Color.plurViolet)
-                        }
-
-                        formSection(title: "OPTIONAL") {
-                            fieldRow("Playlist link", text: $playlistLink, keyboard: .URL)
-                        }
-                    }
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.top, Spacing.md)
-                    .padding(.bottom, Spacing.xxxl)
+                    createPartyFormContent
                 }
             }
             .navigationTitle("Create Party")
@@ -120,7 +140,7 @@ struct CreatePartyView: View {
                             if success {
                                 dismiss()
                             } else {
-                                createErrorMessage = viewModel.error ?? "Please try again."
+                                createErrorMessage = viewModel.generalError ?? "Please try again."
                                 showCreateError = true
                             }
                         }

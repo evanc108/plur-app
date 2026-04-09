@@ -50,7 +50,7 @@ struct ChatView: View {
             await viewModel.loadMessages(for: party.id)
             await viewModel.observeMessages(for: party.id)
         }
-        .onChange(of: viewModel.error) { _, newValue in
+        .onChange(of: viewModel.chatError) { _, newValue in
             guard let newValue, !newValue.isEmpty else { return }
             sendErrorMessage = newValue
             showSendError = true
@@ -69,10 +69,10 @@ struct ChatView: View {
             ForEach(pinnedMessages) { msg in
                 HStack(spacing: Spacing.xs) {
                     Image(systemName: "pin.fill")
-                        .font(.system(size: 10))
+                        .font(.system(size: 12))
                         .foregroundStyle(Color.plurAmber)
                     Text("\(msg.senderName): \(msg.content)")
-                        .font(.plurCaption())
+                        .font(.plurCaption(15))
                         .foregroundStyle(Color.plurGhost)
                         .lineLimit(1)
                 }
@@ -94,11 +94,11 @@ struct ChatView: View {
     private var inputBar: some View {
         HStack(spacing: Spacing.sm) {
             TextField("Message…", text: $draft)
-                .font(.plurBody())
+                .font(.plurBody(18))
                 .foregroundStyle(Color.plurGhost)
                 .textFieldStyle(.plain)
                 .padding(.horizontal, Spacing.md)
-                .padding(.vertical, Spacing.xs)
+                .padding(.vertical, Spacing.sm)
                 .background(
                     Capsule()
                         .fill(Color.plurSurface2)
@@ -118,7 +118,7 @@ struct ChatView: View {
                 }
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
+                    .font(.system(size: 34))
                     .foregroundStyle(Color.plurViolet)
             }
             .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || isSending)
@@ -157,15 +157,15 @@ private struct MessageBubble: View {
             VStack(alignment: isOwnMessage ? .trailing : .leading, spacing: 3) {
                 if !isOwnMessage {
                     Text(message.senderName)
-                        .font(.plurMicro())
+                        .font(.plurCaption())
                         .foregroundStyle(Color.plurMuted)
                 }
 
                 Text(message.content)
-                    .font(.plurBody())
+                    .font(.plurBody(18))
                     .foregroundStyle(Color.plurGhost)
-                    .padding(.horizontal, Spacing.sm)
-                    .padding(.vertical, Spacing.xs)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
                     .background(
                         isOwnMessage
                             ? Color.plurViolet.opacity(0.2)
@@ -195,11 +195,11 @@ private struct MessageBubble: View {
                 HStack(spacing: Spacing.xxs) {
                     if message.isPinned {
                         Image(systemName: "pin.fill")
-                            .font(.system(size: 9))
+                            .font(.system(size: 11))
                             .foregroundStyle(Color.plurAmber)
                     }
                     Text(message.timeText)
-                        .font(.plurTiny())
+                        .font(.plurMicro())
                         .foregroundStyle(Color.plurFaint)
                 }
             }
