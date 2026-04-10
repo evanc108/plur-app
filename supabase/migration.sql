@@ -970,7 +970,194 @@ begin
 end $$;
 
 -- ============================================================
--- 11. Refresh PostgREST schema cache
+-- 11. EDM Train Cache Tables
+-- ============================================================
+-- Shared event cache so the iOS app never hits the EDMTrain API directly.
+-- A Supabase Edge Function syncs data on a schedule.
+
+create extension if not exists pg_trgm;
+
+-- Cached locations (one row per city)
+create table if not exists edmtrain_locations (
+    id int primary key,
+    city text not null,
+    state text not null,
+    state_code text not null,
+    country text not null,
+    country_code text not null,
+    latitude double precision not null,
+    longitude double precision not null,
+    link text
+);
+
+-- Cached events (denormalized with venue info)
+create table if not exists edmtrain_events (
+    id int primary key,
+    name text,
+    date date not null,
+    start_time text,
+    end_time text,
+    ages text,
+    festival_ind boolean not null default false,
+    livestream_ind boolean not null default false,
+    electronic_genre_ind boolean not null default true,
+    other_genre_ind boolean not null default false,
+    link text,
+    created_date text,
+    venue_id int,
+    venue_name text,
+    venue_location text,
+    venue_address text,
+    venue_state text,
+    venue_country text,
+    venue_latitude double precision,
+    venue_longitude double precision,
+    synced_at timestamptz not null default now()
+);
+
+create index if not exists idx_edmtrain_events_date on edmtrain_events(date);
+create index if not exists idx_edmtrain_events_venue_state on edmtrain_events(venue_state);
+create index if not exists idx_edmtrain_events_name_trgm on edmtrain_events using gin (coalesce(name, '') gin_trgm_ops);
+
+-- Event artists (join table)
+create table if not exists edmtrain_event_artists (
+    event_id int not null references edmtrain_events(id) on delete cascade,
+    artist_id int not null,
+    artist_name text not null,
+    artist_link text,
+    b2b_ind boolean not null default false,
+    sort_order int not null default 0,
+    primary key (event_id, artist_id)
+);
+
+create index if not exists idx_edmtrain_artists_name on edmtrain_event_artists(artist_name);
+
+-- Sync audit log
+create table if not exists edmtrain_sync_log (
+    id bigint generated always as identity primary key,
+    sync_type text not null,
+    events_upserted int not null default 0,
+    started_at timestamptz not null default now(),
+    completed_at timestamptz,
+    error text
+);
+
+-- ============================================================
+-- 12. EDM Train Cache — RLS (read-only for app users)
+-- ============================================================
+
+alter table edmtrain_locations enable row level security;
+alter table edmtrain_events enable row level security;
+alter table edmtrain_event_artists enable row level security;
+alter table edmtrain_sync_log enable row level security;
+
+-- Authenticated users can read cached data
+create policy "edmtrain_locations_select"
+    on edmtrain_locations for select
+    to authenticated using (true);
+
+create policy "edmtrain_events_select"
+    on edmtrain_events for select
+    to authenticated using (true);
+
+create policy "edmtrain_event_artists_select"
+    on edmtrain_event_artists for select
+    to authenticated using (true);
+
+create policy "edmtrain_sync_log_select"
+    on edmtrain_sync_log for select
+    to authenticated using (true);
+
+-- ============================================================
+-- 13. EDM Train Cache — Search RPC
+-- ============================================================
+-- Returns JSON matching the iOS EDMTrainEvent Codable shape (camelCase keys).
+
+create or replace function search_events(
+    p_location_ids int[] default null,
+    p_artist_ids int[] default null,
+    p_venue_ids int[] default null,
+    p_event_name text default null,
+    p_start_date date default null,
+    p_end_date date default null,
+    p_festival_only boolean default false,
+    p_include_electronic boolean default true,
+    p_include_other_genres boolean default false,
+    p_limit int default 100,
+    p_offset int default 0
+) returns jsonb
+language sql stable
+as $$
+    select coalesce(jsonb_agg(evt order by evt->>'date', evt->>'id'), '[]'::jsonb)
+    from (
+        select jsonb_build_object(
+            'id', e.id,
+            'name', e.name,
+            'date', to_char(e.date, 'YYYY-MM-DD'),
+            'startTime', e.start_time,
+            'endTime', e.end_time,
+            'ages', e.ages,
+            'festivalInd', e.festival_ind,
+            'livestreamInd', e.livestream_ind,
+            'electronicGenreInd', e.electronic_genre_ind,
+            'otherGenreInd', e.other_genre_ind,
+            'link', e.link,
+            'createdDate', e.created_date,
+            'venue', case when e.venue_id is not null then jsonb_build_object(
+                'id', e.venue_id,
+                'name', coalesce(e.venue_name, ''),
+                'location', e.venue_location,
+                'address', e.venue_address,
+                'state', e.venue_state,
+                'country', e.venue_country,
+                'latitude', e.venue_latitude,
+                'longitude', e.venue_longitude
+            ) else null end,
+            'artistList', coalesce((
+                select jsonb_agg(
+                    jsonb_build_object(
+                        'id', a.artist_id,
+                        'name', a.artist_name,
+                        'link', a.artist_link,
+                        'b2bInd', a.b2b_ind
+                    ) order by a.sort_order
+                )
+                from edmtrain_event_artists a
+                where a.event_id = e.id
+            ), '[]'::jsonb)
+        ) as evt
+        from edmtrain_events e
+        where
+            (p_location_ids is null or exists (
+                select 1 from edmtrain_locations loc
+                where loc.id = any(p_location_ids)
+                  and loc.state_code = e.venue_state
+            ))
+            and (p_venue_ids is null or e.venue_id = any(p_venue_ids))
+            and (p_artist_ids is null or exists (
+                select 1 from edmtrain_event_artists ea
+                where ea.event_id = e.id and ea.artist_id = any(p_artist_ids)
+            ))
+            and (p_event_name is null or p_event_name = '' or
+                 coalesce(e.name, '') ilike '%' || p_event_name || '%' or
+                 exists (
+                     select 1 from edmtrain_event_artists ea
+                     where ea.event_id = e.id
+                       and ea.artist_name ilike '%' || p_event_name || '%'
+                 ))
+            and (p_start_date is null or e.date >= p_start_date)
+            and (p_end_date is null or e.date <= p_end_date)
+            and (not p_festival_only or e.festival_ind = true)
+            and (not p_include_electronic or e.electronic_genre_ind = true)
+            and (not p_include_other_genres or e.other_genre_ind = true)
+        order by e.date, e.id
+        limit p_limit
+        offset p_offset
+    ) sub
+$$;
+
+-- ============================================================
+-- 14. Refresh PostgREST schema cache
 -- ============================================================
 -- Supabase's REST/RPC layer caches schema metadata. After changing functions
 -- (like `create_group`), you may need to refresh the cache.

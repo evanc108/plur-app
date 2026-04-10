@@ -31,7 +31,7 @@ struct MainTabView: View {
                     .opacity(selected == .home ? 1 : 0)
                     .allowsHitTesting(selected == .home)
 
-                RavesView()
+                SearchView()
                     .opacity(selected == .search ? 1 : 0)
                     .allowsHitTesting(selected == .search)
 

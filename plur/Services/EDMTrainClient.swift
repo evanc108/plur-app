@@ -6,9 +6,12 @@ struct EventRequest: Equatable, Sendable {
     var locationIds: [Int] = []
     var artistIds: [Int] = []
     var venueIds: [Int] = []
+    var eventIds: [Int] = []
     var eventName: String?
     var startDate: Date?
     var endDate: Date?
+    var limit: Int = 100
+    var offset: Int = 0
     var festivalOnly: Bool = false
     var livestreamOnly: Bool = false
     var includeElectronic: Bool = true
@@ -17,6 +20,9 @@ struct EventRequest: Equatable, Sendable {
     func toQueryItems() -> [URLQueryItem] {
         var items: [URLQueryItem] = []
 
+        if !eventIds.isEmpty {
+            items.append(URLQueryItem(name: "eventIds", value: eventIds.csv))
+        }
         if !locationIds.isEmpty {
             items.append(URLQueryItem(name: "locationIds", value: locationIds.csv))
         }
@@ -71,73 +77,10 @@ protocol EDMTrainClientProtocol: Sendable {
     func fetchLocations(_ request: LocationRequest) async throws -> [EDMTrainLocation]
 }
 
-// MARK: - Live Client
+// MARK: - Shared Client
 
-actor EDMTrainClient: EDMTrainClientProtocol {
-    static let shared = EDMTrainClient(apiKey: Config.edmTrainAPIKey)
-
-    private let apiKey: String
-    private let session: URLSession
-    private let decoder = JSONDecoder()
-
-    private enum Endpoint: String {
-        case events = "https://edmtrain.com/api/events"
-        case locations = "https://edmtrain.com/api/locations"
-    }
-
-    init(apiKey: String, session: URLSession = .shared) {
-        self.apiKey = apiKey
-        self.session = session
-    }
-
-    func fetchEvents(_ request: EventRequest) async throws -> [EDMTrainEvent] {
-        try await fetch(.events, queryItems: request.toQueryItems())
-    }
-
-    func fetchLocations(_ request: LocationRequest) async throws -> [EDMTrainLocation] {
-        try await fetch(.locations, queryItems: request.toQueryItems())
-    }
-
-    // MARK: - Private
-
-    private func fetch<T: Codable>(_ endpoint: Endpoint, queryItems: [URLQueryItem]) async throws -> T {
-        var components = URLComponents(string: endpoint.rawValue)!
-        components.queryItems = [URLQueryItem(name: "client", value: apiKey)] + queryItems
-
-        guard let url = components.url else {
-            throw EDMTrainError.invalidURL
-        }
-
-        let (data, response) = try await session.data(from: url)
-
-        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
-            throw EDMTrainError.httpError(http.statusCode)
-        }
-
-        let decoded = try decoder.decode(EDMTrainResponse<T>.self, from: data)
-
-        guard decoded.success else {
-            throw EDMTrainError.apiError(decoded.message ?? "Unknown API error")
-        }
-
-        return decoded.data
-    }
-}
-
-// MARK: - Errors
-
-enum EDMTrainError: LocalizedError {
-    case invalidURL
-    case httpError(Int)
-    case apiError(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidURL: return "Invalid request URL"
-        case .httpError(let code): return "Server error (\(code))"
-        case .apiError(let message): return message
-        }
-    }
+enum EDMTrainClient {
+    static let shared: EDMTrainClientProtocol = EDMTrainSupabaseClient()
 }
 
 // MARK: - Helpers
