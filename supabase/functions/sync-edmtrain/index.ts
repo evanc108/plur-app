@@ -17,11 +17,25 @@ interface SyncLog {
 
 Deno.serve(async (req) => {
   try {
-    // Auth guard: require the service role key or a shared secret
+    // Auth guard: verify the caller is using the service_role JWT (not anon)
     const authHeader = req.headers.get("Authorization") ?? "";
-    const expectedKey = Deno.env.get("SYNC_SECRET") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!expectedKey || authHeader !== `Bearer ${expectedKey}`) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    const syncSecret = Deno.env.get("SYNC_SECRET");
+    if (syncSecret) {
+      // If a dedicated secret is configured, check a custom header
+      if (req.headers.get("x-sync-secret") !== syncSecret) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+      }
+    } else {
+      // Otherwise, verify the JWT contains the service_role claim
+      const token = authHeader.replace("Bearer ", "");
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.role !== "service_role") {
+          return new Response(JSON.stringify({ error: "Unauthorized: requires service_role" }), { status: 401 });
+        }
+      } catch {
+        return new Response(JSON.stringify({ error: "Unauthorized: invalid token" }), { status: 401 });
+      }
     }
 
     const edmTrainApiKey = Deno.env.get("EDMTRAIN_API_KEY");
