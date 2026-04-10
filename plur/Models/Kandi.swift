@@ -1,6 +1,6 @@
 import Foundation
 
-struct Kandi: Codable, Identifiable {
+struct Kandi: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var fromUserId: UUID
     var toUserId: UUID

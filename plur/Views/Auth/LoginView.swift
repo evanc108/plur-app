@@ -12,21 +12,27 @@ struct LoginView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ZStack {
+            Color.plurVoid.ignoresSafeArea()
 
-            Text("PLUR")
-                .font(.system(size: 48, weight: .bold))
+            VStack(spacing: Spacing.xl) {
+                Spacer()
 
-            if authService.isAwaitingConfirmation {
-                otpView
-            } else {
-                formView
+                Text("PLUR")
+                    .font(.plurDisplay())
+                    .foregroundStyle(Color.plurGhost)
+
+                if authService.isAwaitingConfirmation {
+                    otpView
+                } else {
+                    formView
+                }
+
+                Spacer()
             }
-
-            Spacer()
+            .padding(.horizontal, Spacing.xxl)
         }
-        .padding(.horizontal, 32)
+        .preferredColorScheme(.dark)
     }
 
     // MARK: - OTP Verification
@@ -38,34 +44,32 @@ struct LoginView: View {
             : (authService.confirmationEmail ?? email)
         let codeLength = isPhone ? 6 : 8
 
-        return VStack(spacing: 16) {
+        return VStack(spacing: Spacing.md) {
             Image(systemName: isPhone ? "phone.badge.checkmark" : "envelope.badge")
                 .font(.system(size: 40))
-                .foregroundStyle(.blue)
+                .foregroundStyle(Color.plurViolet)
 
             Text(isPhone ? "Check your messages" : "Check your email")
-                .font(.headline)
+                .font(.plurH2())
+                .foregroundStyle(Color.plurGhost)
 
             Text("Enter the \(codeLength)-digit code sent to \(destination)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.plurBody())
+                .foregroundStyle(Color.plurMuted)
                 .multilineTextAlignment(.center)
 
             TextField(String(repeating: "0", count: codeLength), text: $otpCode)
                 .multilineTextAlignment(.center)
-                .font(.title2.monospaced())
+                .font(.plurHeading(28).monospaced())
+                .foregroundStyle(Color.plurGhost)
                 .tracking(6)
-                #if os(iOS)
                 .keyboardType(.numberPad)
-                #endif
-                .padding()
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .glassField()
 
             if let errorMessage {
                 Text(errorMessage)
-                    .foregroundStyle(.red)
-                    .font(.caption)
+                    .foregroundStyle(Color.plurRose)
+                    .font(.plurCaption())
             }
 
             Button {
@@ -73,16 +77,16 @@ struct LoginView: View {
             } label: {
                 if isLoading {
                     ProgressView()
+                        .tint(.white)
                         .frame(maxWidth: .infinity)
                 } else {
                     Text("Verify")
-                        .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                 }
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(PLURButtonStyle())
             .disabled(otpCode.count != codeLength || isLoading)
+            .opacity(otpCode.count != codeLength ? 0.5 : 1)
         }
     }
 
@@ -90,47 +94,73 @@ struct LoginView: View {
 
     @ViewBuilder
     private var formView: some View {
-        Picker("Auth method", selection: $usePhone) {
-            Text("Email").tag(false)
-            Text("Phone").tag(true)
+        HStack(spacing: Spacing.xxs) {
+            ForEach([false, true], id: \.self) { isPhone in
+                Button {
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        usePhone = isPhone
+                    }
+                } label: {
+                    Text(isPhone ? "Phone" : "Email")
+                        .font(.plurBodyBold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Spacing.xs)
+                        .background(
+                            usePhone == isPhone
+                                ? Color.plurViolet.opacity(0.25)
+                                : Color.clear,
+                            in: RoundedRectangle(cornerRadius: Radius.activeTab)
+                        )
+                        .foregroundStyle(usePhone == isPhone ? Color.plurGhost : Color.plurMuted)
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .pickerStyle(.segmented)
+        .padding(Spacing.xxs)
+        .background(
+            RoundedRectangle(cornerRadius: Radius.tab)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Radius.tab)
+                        .fill(Color.plurGlass)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Radius.tab)
+                        .stroke(Color.plurBorder, lineWidth: 1)
+                )
+        )
 
-        VStack(spacing: 16) {
+        VStack(spacing: Spacing.md) {
             if usePhone {
                 TextField("+1 (555) 000-0000", text: $phone)
+                    .font(.plurBody())
+                    .foregroundStyle(Color.plurGhost)
                     .textContentType(.telephoneNumber)
                     .autocorrectionDisabled()
-                    #if os(iOS)
                     .keyboardType(.phonePad)
-                    #endif
-                    .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassField()
             } else {
                 TextField("Email", text: $email)
+                    .font(.plurBody())
+                    .foregroundStyle(Color.plurGhost)
                     .textContentType(.emailAddress)
                     .autocorrectionDisabled()
-                    #if os(iOS)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.emailAddress)
-                    #endif
-                    .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassField()
 
                 SecureField("Password", text: $password)
+                    .font(.plurBody())
+                    .foregroundStyle(Color.plurGhost)
                     .textContentType(isSignUp ? .newPassword : .password)
-                    .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassField()
             }
         }
 
         if let errorMessage {
             Text(errorMessage)
-                .foregroundStyle(.red)
-                .font(.caption)
+                .foregroundStyle(Color.plurRose)
+                .font(.plurCaption())
         }
 
         Button {
@@ -138,23 +168,24 @@ struct LoginView: View {
         } label: {
             if isLoading {
                 ProgressView()
+                    .tint(.white)
                     .frame(maxWidth: .infinity)
             } else {
                 Text(usePhone ? "Send Code" : (isSignUp ? "Sign Up" : "Sign In"))
-                    .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
             }
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
+        .buttonStyle(PLURButtonStyle())
         .disabled(isLoading || (usePhone ? phone.isEmpty : (email.isEmpty || password.isEmpty)))
+        .opacity(isLoading || (usePhone ? phone.isEmpty : (email.isEmpty || password.isEmpty)) ? 0.5 : 1)
 
         if !usePhone {
             Button(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up") {
                 isSignUp.toggle()
                 errorMessage = nil
             }
-            .font(.footnote)
+            .font(.plurCaption())
+            .foregroundStyle(Color.plurMuted)
         }
     }
 

@@ -1,6 +1,6 @@
 import Foundation
 
-struct RaveGroup: Codable, Identifiable {
+struct RaveGroup: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var name: String
     var raveId: Int
@@ -31,12 +31,14 @@ struct RaveGroup: Codable, Identifiable {
 
     private static let shortDateFormatter: DateFormatter = {
         let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "MMM d"
         return f
     }()
 
     private static let yearDateFormatter: DateFormatter = {
         let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "MMM d, yyyy"
         return f
     }()
@@ -48,7 +50,7 @@ struct RaveGroup: Codable, Identifiable {
     }
 }
 
-enum RSVPStatus: String, Codable, CaseIterable {
+enum RSVPStatus: String, Codable, CaseIterable, Sendable {
     case going
     case maybe
     case invited
@@ -66,7 +68,7 @@ enum RSVPStatus: String, Codable, CaseIterable {
     }
 }
 
-struct GroupMember: Codable, Identifiable {
+struct GroupMember: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var groupId: UUID
     var userId: UUID
@@ -85,7 +87,7 @@ struct GroupMember: Codable, Identifiable {
     }
 }
 
-enum GroupRole: String, Codable {
+enum GroupRole: String, Codable, Sendable {
     case owner
     case admin
     case member

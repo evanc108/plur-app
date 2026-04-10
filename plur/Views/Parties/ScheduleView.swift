@@ -3,12 +3,13 @@ import UIKit
 
 struct ScheduleView: View {
     let party: RaveGroup
-    @Bindable var viewModel: PartyViewModel
+    let partyVM: PartyViewModel
+    @Bindable var scheduleVM: ScheduleViewModel
 
     @State private var selectedDayId: UUID?
 
     private var schedule: EventScheduleRecord? {
-        viewModel.festivalSchedule(for: party)
+        scheduleVM.festivalSchedule(for: party)
     }
 
     private var days: [ScheduleDayRecord] {
@@ -23,8 +24,8 @@ struct ScheduleView: View {
         Group {
             if party.raveId == 0 {
                 noLineupHint("Link this party to an event (rave ID) to load a lineup.")
-            } else if schedule == nil, viewModel.scheduleLoadError != nil {
-                noLineupHint(viewModel.scheduleLoadError ?? "Couldn’t load schedule.")
+            } else if schedule == nil, scheduleVM.scheduleLoadError != nil {
+                noLineupHint(scheduleVM.scheduleLoadError ?? "Couldn’t load schedule.")
             } else if let schedule {
                 if days.isEmpty {
                     noLineupHint("No days in this schedule yet.")
@@ -43,7 +44,7 @@ struct ScheduleView: View {
         }
         .background(Color.plurVoid)
         .task(id: party.id) {
-            await viewModel.loadScheduleData(for: party)
+            await scheduleVM.loadScheduleData(for: party)
         }
     }
 
@@ -59,7 +60,8 @@ struct ScheduleView: View {
                     schedule: schedule,
                     day: day,
                     party: party,
-                    viewModel: viewModel
+                    partyVM: partyVM,
+                    scheduleVM: scheduleVM
                 )
             }
             .padding(.horizontal, Spacing.sm)
@@ -137,8 +139,9 @@ private struct ScheduleTimelineRail: View {
     let calendar: Calendar
     let height: CGFloat
 
-    private var tickFormatter: DateFormatter {
+    private func makeTickFormatter() -> DateFormatter {
         let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
         f.calendar = calendar
         f.timeZone = calendar.timeZone
         f.dateFormat = "ha"
@@ -164,7 +167,7 @@ private struct ScheduleTimelineRail: View {
 
     private func tickLabel(for hourIndex: Int) -> String {
         guard let t = calendar.date(byAdding: .hour, value: hourIndex, to: anchor) else { return "—" }
-        return tickFormatter.string(from: t).lowercased()
+        return makeTickFormatter().string(from: t).lowercased()
     }
 }
 
@@ -180,7 +183,8 @@ private struct FestivalScheduleLineupView: View {
     let schedule: EventScheduleRecord
     let day: ScheduleDayRecord
     let party: RaveGroup
-    @Bindable var viewModel: PartyViewModel
+    let partyVM: PartyViewModel
+    @Bindable var scheduleVM: ScheduleViewModel
 
     private let headerHeight: CGFloat = 62
     private let hourHeight: CGFloat = 96
@@ -207,8 +211,9 @@ private struct FestivalScheduleLineupView: View {
         return cal
     }
 
-    private var slotTimeFormatter: DateFormatter {
+    private func makeSlotTimeFormatter() -> DateFormatter {
         let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
         f.timeZone = tz
         f.dateFormat = "h:mm a"
         return f
@@ -395,8 +400,9 @@ private struct FestivalScheduleLineupView: View {
         } ?? .greatestFiniteMagnitude
         let minBlockH: CGFloat = 4
         let h = min(max(naturalH, minBlockH), maxHToNext)
-        let selected = viewModel.isSlotSelected(slot.id, groupId: party.id)
-        let bubbles = viewModel.attendeeInitials(for: slot.id, groupId: party.id)
+        let members = partyVM.members[party.id] ?? []
+        let selected = scheduleVM.isSlotSelected(slot.id, groupId: party.id, userId: partyVM.currentUserId)
+        let bubbles = scheduleVM.attendeeInitials(for: slot.id, groupId: party.id, members: members)
         let hasAttendees = !bubbles.shown.isEmpty || bubbles.overflow > 0
 
         let showTime = h >= 44
@@ -406,7 +412,7 @@ private struct FestivalScheduleLineupView: View {
         let showAttendeeInline = hasAttendees && h < 46 && h >= 26
 
         return Button {
-            Task { await viewModel.toggleSlotSelection(slot.id, in: party) }
+            Task { await scheduleVM.toggleSlotSelection(slot.id, in: party, userId: partyVM.currentUserId) }
         } label: {
             VStack(alignment: .center, spacing: 3) {
                 HStack(alignment: .top, spacing: 0) {
@@ -511,7 +517,8 @@ private struct FestivalScheduleLineupView: View {
     }
 
     private func slotTimeRange(start: Date, end: Date) -> String {
-        "\(slotTimeFormatter.string(from: start).uppercased()) – \(slotTimeFormatter.string(from: end).uppercased())"
+        let formatter = makeSlotTimeFormatter()
+        return "\(formatter.string(from: start).uppercased()) – \(formatter.string(from: end).uppercased())"
     }
 
     private func avatarColor(for initials: String) -> Color {

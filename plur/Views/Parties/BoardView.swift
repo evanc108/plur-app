@@ -2,7 +2,8 @@ import SwiftUI
 
 struct BoardView: View {
     let party: RaveGroup
-    @Bindable var viewModel: PartyViewModel
+    @Bindable var partyVM: PartyViewModel
+    @Bindable var chatVM: ChatViewModel
     @State private var showQRFullScreen = false
 
     var body: some View {
@@ -21,7 +22,7 @@ struct BoardView: View {
         }
         .background(Color.plurVoid)
         .sheet(isPresented: $showQRFullScreen) {
-            QRFullScreenView(party: party, viewModel: viewModel)
+            QRFullScreenView(party: party, partyVM: partyVM)
         }
     }
 
@@ -53,7 +54,7 @@ struct BoardView: View {
                     .font(.plurH3())
                     .foregroundStyle(Color.plurGhost)
 
-                let members = viewModel.members[party.id] ?? []
+                let members = partyVM.members[party.id] ?? []
                 ForEach(members) { member in
                     HStack(spacing: Spacing.sm) {
                         Circle()
@@ -90,7 +91,7 @@ struct BoardView: View {
     // MARK: - Pinned Items
 
     private var pinnedItemsSection: some View {
-        let items = viewModel.pinnedItems[party.id] ?? []
+        let items = partyVM.pinnedItems[party.id] ?? []
         return Group {
             if !items.isEmpty {
                 GlassCard(tint: Color.plurAmber) {
@@ -125,7 +126,7 @@ struct BoardView: View {
     // MARK: - Pinned Messages
 
     private var pinnedMessagesSection: some View {
-        let pinned = viewModel.pinnedMessages(for: party.id)
+        let pinned = chatVM.pinnedMessages(for: party.id)
         return Group {
             if !pinned.isEmpty {
                 GlassCard(tint: Color.plurAmber) {
@@ -200,7 +201,7 @@ struct BoardView: View {
                     .foregroundStyle(Color.plurGhost)
 
                 HStack(spacing: Spacing.md) {
-                    Image(uiImage: QRCodeGenerator.image(for: viewModel.inviteLink(for: party), size: 80))
+                    Image(uiImage: QRCodeGenerator.image(for: partyVM.inviteLink(for: party), size: 80))
                         .interpolation(.none)
                         .resizable()
                         .frame(width: 60, height: 60)
@@ -219,7 +220,7 @@ struct BoardView: View {
                         }
 
                         ShareLink(
-                            item: viewModel.inviteLink(for: party),
+                            item: partyVM.inviteLink(for: party),
                             subject: Text("Join \(party.name)"),
                             message: Text("Join my crew for \(party.eventName) on PLUR!")
                         ) {
@@ -262,7 +263,7 @@ struct BoardView: View {
 
 private struct QRFullScreenView: View {
     let party: RaveGroup
-    let viewModel: PartyViewModel
+    let partyVM: PartyViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -277,7 +278,7 @@ private struct QRFullScreenView: View {
                         .font(.plurH2())
                         .foregroundStyle(Color.plurGhost)
 
-                    Image(uiImage: QRCodeGenerator.image(for: viewModel.inviteLink(for: party), size: 260))
+                    Image(uiImage: QRCodeGenerator.image(for: partyVM.inviteLink(for: party), size: 260))
                         .interpolation(.none)
                         .resizable()
                         .frame(width: 240, height: 240)
@@ -294,7 +295,7 @@ private struct QRFullScreenView: View {
                     }
 
                     ShareLink(
-                        item: viewModel.inviteLink(for: party),
+                        item: partyVM.inviteLink(for: party),
                         subject: Text("Join \(party.name)"),
                         message: Text("Join my crew for \(party.eventName) on PLUR!")
                     ) {

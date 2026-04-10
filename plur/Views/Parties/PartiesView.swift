@@ -1,11 +1,15 @@
 import SwiftUI
 
 struct PartiesView: View {
-    @State private var viewModel: PartyViewModel
+    @State private var partyVM: PartyViewModel
+    @State private var chatVM = ChatViewModel()
+    @State private var photosVM = PhotosViewModel()
+    @State private var scheduleVM: ScheduleViewModel
     @State private var activeSheet: ActiveSheet?
 
     init(scheduleCacheStore: ScheduleCacheStore) {
-        _viewModel = State(initialValue: PartyViewModel(scheduleCache: scheduleCacheStore))
+        _partyVM = State(initialValue: PartyViewModel())
+        _scheduleVM = State(initialValue: ScheduleViewModel(scheduleCache: scheduleCacheStore))
     }
 
     private enum ActiveSheet: Identifiable {
@@ -26,11 +30,11 @@ struct PartiesView: View {
                 Color.plurVoid.ignoresSafeArea()
 
                 Group {
-                    if viewModel.isLoading && viewModel.parties.isEmpty {
+                    if partyVM.isLoading && partyVM.parties.isEmpty {
                         ProgressView()
                             .tint(Color.plurViolet)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if viewModel.parties.isEmpty {
+                    } else if partyVM.parties.isEmpty {
                         emptyState
                     } else {
                         partyList
@@ -61,23 +65,29 @@ struct PartiesView: View {
             }
             .toolbarBackground(.hidden, for: .navigationBar)
             .navigationDestination(for: UUID.self) { partyID in
-                if let party = viewModel.parties.first(where: { $0.id == partyID }) {
-                    PartyDetailView(party: party, viewModel: viewModel)
+                if let party = partyVM.parties.first(where: { $0.id == partyID }) {
+                    PartyDetailView(
+                        party: party,
+                        partyVM: partyVM,
+                        chatVM: chatVM,
+                        photosVM: photosVM,
+                        scheduleVM: scheduleVM
+                    )
                 }
             }
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
                 case .create:
-                    CreatePartyView(viewModel: viewModel)
+                    CreatePartyView(viewModel: partyVM)
                 case .join:
-                    JoinPartyView(viewModel: viewModel)
+                    JoinPartyView(viewModel: partyVM)
                 }
             }
             .refreshable {
-                await viewModel.loadParties()
+                await partyVM.loadParties()
             }
             .task {
-                await viewModel.loadParties()
+                await partyVM.loadParties()
             }
         }
         .preferredColorScheme(.dark)
@@ -130,7 +140,7 @@ struct PartiesView: View {
 
             ForEach(parties) { party in
                 NavigationLink(value: party.id) {
-                    PartyCard(party: party, memberCount: viewModel.members[party.id]?.count ?? 0)
+                    PartyCard(party: party, memberCount: partyVM.members[party.id]?.count ?? 0)
                 }
                 .buttonStyle(.plain)
             }
@@ -138,11 +148,11 @@ struct PartiesView: View {
     }
 
     private var upcomingParties: [RaveGroup] {
-        viewModel.parties.filter { !$0.isPast }
+        partyVM.parties.filter { !$0.isPast }
     }
 
     private var pastParties: [RaveGroup] {
-        viewModel.parties.filter(\.isPast)
+        partyVM.parties.filter(\.isPast)
     }
 }
 

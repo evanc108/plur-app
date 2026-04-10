@@ -7,7 +7,6 @@ private enum PickedImageTransferError: Error {
     case importFailed
 }
 
-/// Matches Apple’s Photos picker pattern: image `Data` via `DataRepresentation` with a throwing import.
 private struct PickedImageData: Transferable {
     let data: Data
 
@@ -23,7 +22,8 @@ private struct PickedImageData: Transferable {
 
 struct PhotosView: View {
     let party: RaveGroup
-    @Bindable var viewModel: PartyViewModel
+    let partyVM: PartyViewModel
+    @Bindable var photosVM: PhotosViewModel
 
     @State private var selectedPickerItems: [PhotosPickerItem] = []
     @State private var isCompressing = false
@@ -32,7 +32,7 @@ struct PhotosView: View {
     @State private var pickErrorMessage: String?
 
     private var photos: [Photo] {
-        viewModel.photos[party.id] ?? []
+        photosVM.photos[party.id] ?? []
     }
 
     private let columns = [
@@ -44,7 +44,7 @@ struct PhotosView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                if photos.isEmpty && !viewModel.isUploadingPhoto && !isBatchActive {
+                if photos.isEmpty && !photosVM.isUploadingPhoto && !isBatchActive {
                     emptyState
                 } else {
                     photoGrid
@@ -58,7 +58,7 @@ struct PhotosView: View {
         }
         .background(Color.plurVoid)
         .task {
-            await viewModel.loadPhotos(for: party.id)
+            await photosVM.loadPhotos(for: party.id)
         }
         .onChange(of: selectedPickerItems) { _, items in
             guard !items.isEmpty else { return }
@@ -67,7 +67,7 @@ struct PhotosView: View {
                 await handlePickedItems(toProcess)
             }
         }
-        .alert("Couldn’t add photos", isPresented: Binding(
+        .alert("Couldn't add photos", isPresented: Binding(
             get: { pickErrorMessage != nil },
             set: { if !$0 { pickErrorMessage = nil } }
         )) {
@@ -76,12 +76,12 @@ struct PhotosView: View {
             Text(pickErrorMessage ?? "")
         }
         .alert("Upload failed", isPresented: Binding(
-            get: { viewModel.photoError != nil },
-            set: { if !$0 { viewModel.photoError = nil } }
+            get: { photosVM.photoError != nil },
+            set: { if !$0 { photosVM.photoError = nil } }
         )) {
-            Button("OK", role: .cancel) { viewModel.photoError = nil }
+            Button("OK", role: .cancel) { photosVM.photoError = nil }
         } message: {
-            Text(viewModel.photoError ?? "")
+            Text(photosVM.photoError ?? "")
         }
     }
 
@@ -108,7 +108,7 @@ struct PhotosView: View {
 
     private var photoGrid: some View {
         ScrollView {
-            if isBatchActive || viewModel.isUploadingPhoto {
+            if isBatchActive || photosVM.isUploadingPhoto {
                 HStack(spacing: Spacing.xs) {
                     ProgressView()
                         .tint(Color.plurViolet)
@@ -129,9 +129,9 @@ struct PhotosView: View {
                             }
                         }
                         .contextMenu {
-                            if photo.userId == viewModel.currentUserId {
+                            if photo.userId == partyVM.currentUserId {
                                 Button(role: .destructive) {
-                                    Task { await viewModel.deletePhoto(photo, in: party.id) }
+                                    Task { await photosVM.deletePhoto(photo, in: party.id) }
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
@@ -162,8 +162,8 @@ struct PhotosView: View {
                 .padding(.vertical, Spacing.sm)
                 .background(Color.plurViolet, in: RoundedRectangle(cornerRadius: Radius.pill))
         }
-        .disabled(viewModel.isUploadingPhoto || isCompressing || isBatchActive)
-        .opacity((viewModel.isUploadingPhoto || isCompressing || isBatchActive) ? 0.5 : 1)
+        .disabled(photosVM.isUploadingPhoto || isCompressing || isBatchActive)
+        .opacity((photosVM.isUploadingPhoto || isCompressing || isBatchActive) ? 0.5 : 1)
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.sm)
         .background(
@@ -242,7 +242,7 @@ struct PhotosView: View {
     @MainActor
     private func handlePickedItems(_ items: [PhotosPickerItem]) async {
         pickErrorMessage = nil
-        viewModel.photoError = nil
+        photosVM.photoError = nil
         isBatchActive = true
         selectedPickerItems = []
 
@@ -266,14 +266,19 @@ struct PhotosView: View {
                 continue
             }
 
-            _ = await viewModel.uploadPhoto(to: party.id, imageData: compressed, caption: nil)
+            _ = await photosVM.uploadPhoto(
+                to: party.id,
+                userId: partyVM.currentUserId ?? UUID(),
+                imageData: compressed,
+                caption: nil
+            )
         }
 
         isBatchActive = false
         if prepareFailures == 1 {
-            pickErrorMessage = "1 photo couldn’t be read or processed."
+            pickErrorMessage = "1 photo couldn't be read or processed."
         } else if prepareFailures > 1 {
-            pickErrorMessage = "\(prepareFailures) photos couldn’t be read or processed."
+            pickErrorMessage = "\(prepareFailures) photos couldn't be read or processed."
         }
     }
 

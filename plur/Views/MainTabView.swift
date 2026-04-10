@@ -26,13 +26,22 @@ struct MainTabView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Group {
-                switch selected {
-                case .home: PartiesView(scheduleCacheStore: scheduleCacheStore)
-                case .search: RavesView()
-                case .inbox: InboxView()
-                case .profile: ProfileView()
-                }
+            ZStack {
+                PartiesView(scheduleCacheStore: scheduleCacheStore)
+                    .opacity(selected == .home ? 1 : 0)
+                    .allowsHitTesting(selected == .home)
+
+                RavesView()
+                    .opacity(selected == .search ? 1 : 0)
+                    .allowsHitTesting(selected == .search)
+
+                InboxView()
+                    .opacity(selected == .inbox ? 1 : 0)
+                    .allowsHitTesting(selected == .inbox)
+
+                ProfileView()
+                    .opacity(selected == .profile ? 1 : 0)
+                    .allowsHitTesting(selected == .profile)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 

@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Request
 
-struct EventRequest: Equatable {
+struct EventRequest: Equatable, Sendable {
     var locationIds: [Int] = []
     var artistIds: [Int] = []
     var venueIds: [Int] = []
@@ -52,7 +52,7 @@ struct EventRequest: Equatable {
     }
 }
 
-struct LocationRequest {
+struct LocationRequest: Sendable {
     var state: String?
     var city: String?
 
@@ -74,6 +74,8 @@ protocol EDMTrainClientProtocol: Sendable {
 // MARK: - Live Client
 
 actor EDMTrainClient: EDMTrainClientProtocol {
+    static let shared = EDMTrainClient(apiKey: Config.edmTrainAPIKey)
+
     private let apiKey: String
     private let session: URLSession
     private let decoder = JSONDecoder()
@@ -83,16 +85,16 @@ actor EDMTrainClient: EDMTrainClientProtocol {
         case locations = "https://edmtrain.com/api/locations"
     }
 
-    init(apiKey: String = Config.edmTrainAPIKey, session: URLSession = .shared) {
+    init(apiKey: String, session: URLSession = .shared) {
         self.apiKey = apiKey
         self.session = session
     }
 
-    func fetchEvents(_ request: EventRequest = EventRequest()) async throws -> [EDMTrainEvent] {
+    func fetchEvents(_ request: EventRequest) async throws -> [EDMTrainEvent] {
         try await fetch(.events, queryItems: request.toQueryItems())
     }
 
-    func fetchLocations(_ request: LocationRequest = LocationRequest()) async throws -> [EDMTrainLocation] {
+    func fetchLocations(_ request: LocationRequest) async throws -> [EDMTrainLocation] {
         try await fetch(.locations, queryItems: request.toQueryItems())
     }
 

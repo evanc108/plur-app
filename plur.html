@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLUR — Design System v2</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --void: #080808;
+    --surface: #111111;
+    --surface2: #1A1A1A;
+    --lift: #222222;
+    --border: rgba(255,255,255,0.08);
+    --border-glass: rgba(255,255,255,0.12);
+    --text: #F0F0F0;
+    --text-sec: rgba(255,255,255,0.55);
+    --text-mut: rgba(255,255,255,0.3);
+    --rose: #C0607A;
+    --violet: #7B5EA7;
+    --teal: #3D8A7A;
+    --amber: #C47B3A;
+    --glass: rgba(255,255,255,0.06);
+    --glass-h: rgba(255,255,255,0.10);
+    --blur: 24px;
+  }
+  body { background: #0A0A0A; font-family: 'DM Sans', sans-serif; color: var(--text); overflow-x: hidden; }
+
+  /* ── PAGE LAYOUT ── */
+  .hdr { padding: 60px 48px 20px; }
+  .hdr h1 { font-family:'Syne',sans-serif; font-weight:800; font-size:42px; letter-spacing:-0.02em; background:linear-gradient(135deg,var(--rose),var(--violet)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .hdr p { color:var(--text-sec); font-size:15px; margin-top:8px; max-width:600px; line-height:1.6; }
+  .sec { padding: 24px 48px; }
+  .sec-l { font-size:10px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-mut); margin-bottom:16px; }
+
+  /* ── PHONES ROW ── */
+  .phones { display:flex; gap:32px; padding:24px 48px 60px; overflow-x:auto; -webkit-overflow-scrolling:touch; scroll-snap-type:x mandatory; }
+  .pw { flex-shrink:0; scroll-snap-align:start; }
+  .pw-l { font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-mut); margin-bottom:12px; text-align:center; }
+  .ph { width:375px; height:812px; background:var(--void); border-radius:48px; overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.08); box-shadow:0 40px 100px rgba(0,0,0,0.6); }
+  .ph-in { width:100%; height:100%; position:relative; overflow:hidden; overflow-y:auto; }
+  .ph-in::-webkit-scrollbar { display:none; }
+  .di { position:absolute; top:10px; left:50%; transform:translateX(-50%); width:120px; height:34px; background:#000; border-radius:20px; z-index:200; }
+  .hi { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:134px; height:5px; background:rgba(255,255,255,0.2); border-radius:3px; z-index:200; }
+
+  /* status bar */
+  .sb { position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; padding:14px 28px 8px; font-size:14px; font-weight:600; }
+
+  /* bottom nav */
+  .bn { position:absolute; bottom:0; left:0; right:0; height:88px; background:rgba(8,8,8,0.85); backdrop-filter:blur(30px); -webkit-backdrop-filter:blur(30px); border-top:1px solid var(--border); display:flex; justify-content:space-around; align-items:flex-start; padding-top:12px; z-index:150; }
+  .ni { display:flex; flex-direction:column; align-items:center; gap:4px; opacity:0.4; }
+  .ni.ac { opacity:1; }
+  .ni svg { width:24px; height:24px; }
+  .ni span { font-size:10px; font-weight:500; }
+
+  /* ── SHARED COMPONENTS ── */
+  .glass { background:var(--glass); backdrop-filter:blur(var(--blur)); -webkit-backdrop-filter:blur(var(--blur)); border:1px solid var(--border-glass); border-radius:20px; }
+
+  /* images */
+  .img-cover { width:100%; height:100%; object-fit:cover; }
+
+  /* ═══════════════════════════════════
+     SCREEN 1: HOME
+     ═══════════════════════════════════ */
+  .home-hero { position:relative; width:100%; height:260px; overflow:hidden; }
+  .home-hero-bg { position:absolute; inset:0; background:radial-gradient(ellipse 120% 80% at 50% 0%,rgba(123,94,167,0.5) 0%,transparent 60%),radial-gradient(ellipse 80% 60% at 80% 20%,rgba(192,96,122,0.3) 0%,transparent 50%),var(--void); }
+  .home-gr { position:relative; z-index:2; padding:58px 24px 0; display:flex; align-items:center; justify-content:space-between; }
+  .home-av { display:flex; align-items:center; gap:12px; }
+  .av-ring { width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,var(--violet),var(--rose)); padding:2px; }
+  .av-in { width:100%; height:100%; border-radius:50%; overflow:hidden; }
+  .av-in img { width:100%; height:100%; object-fit:cover; }
+  .gr-t { font-family:'Syne',sans-serif; font-weight:800; font-size:18px; }
+  .gr-s { font-size:12px; color:var(--text-sec); margin-top:1px; }
+  .bell { width:40px; height:40px; border-radius:50%; background:var(--glass); backdrop-filter:blur(12px); border:1px solid var(--border-glass); display:flex; align-items:center; justify-content:center; position:relative; }
+  .bell-d { position:absolute; top:8px; right:9px; width:8px; height:8px; background:var(--rose); border-radius:50%; border:2px solid var(--void); }
+  .home-hl { font-family:'Syne',sans-serif; font-weight:800; font-size:26px; line-height:1.15; padding:20px 24px 0; position:relative; z-index:2; }
+  .home-hl .ac { color:var(--violet); }
+
+  /* Party cards */
+  .pscroll { display:flex; gap:14px; padding:20px 24px 0; overflow-x:auto; position:relative; z-index:2; }
+  .pscroll::-webkit-scrollbar { display:none; }
+  .pc { flex-shrink:0; width:260px; border-radius:20px; overflow:hidden; position:relative; }
+  .pc-img { width:100%; height:150px; position:relative; overflow:hidden; }
+  .pc-img img { width:100%; height:100%; object-fit:cover; }
+  .pc-img::after { content:''; position:absolute; bottom:0; left:0; right:0; height:60px; background:linear-gradient(transparent,rgba(0,0,0,0.5)); }
+  .pc-body { padding:14px 16px; backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,0.1); border-top:none; border-radius:0 0 20px 20px; }
+  .pc.violet-t .pc-body { background:rgba(123,94,167,0.12); border-color:rgba(123,94,167,0.2); }
+  .pc.teal-t .pc-body { background:rgba(61,138,122,0.10); border-color:rgba(61,138,122,0.18); }
+  .pc.rose-t .pc-body { background:rgba(192,96,122,0.10); border-color:rgba(192,96,122,0.18); }
+  .pc.amber-t .pc-body { background:rgba(196,123,58,0.10); border-color:rgba(196,123,58,0.18); }
+  .pc-title { font-weight:600; font-size:14px; margin-bottom:4px; }
+  .pc-meta { font-size:11px; color:var(--text-sec); display:flex; flex-direction:column; gap:3px; }
+  .pc-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+  .pc-avs { display:flex; }
+  .pc-avs .pa { width:24px; height:24px; border-radius:50%; border:2px solid var(--void); margin-left:-6px; overflow:hidden; }
+  .pc-avs .pa:first-child { margin-left:0; }
+  .pc-avs .pa img { width:100%; height:100%; object-fit:cover; }
+  .pc-pr { padding:4px 10px; border-radius:100px; font-size:11px; font-weight:600; }
+  .pc.violet-t .pc-pr { background:rgba(123,94,167,0.3); color:#c4b0e0; }
+  .pc.teal-t .pc-pr { background:rgba(61,138,122,0.3); color:#7ac4b4; }
+  .pc.rose-t .pc-pr { background:rgba(192,96,122,0.3); color:#e0a0b0; }
+  .pc.amber-t .pc-pr { background:rgba(196,123,58,0.3); color:#e0c4a0; }
+
+  /* trending */
+  .sh { display:flex; justify-content:space-between; align-items:center; padding:24px 24px 12px; position:relative; z-index:2; }
+  .sh-t { font-family:'Syne',sans-serif; font-weight:700; font-size:16px; }
+  .sh-l { font-size:12px; color:var(--violet); font-weight:500; }
+  .tr { display:flex; gap:12px; padding:0 24px 120px; position:relative; z-index:2; }
+  .tc { flex:1; height:100px; border-radius:16px; position:relative; overflow:hidden; }
+  .tc img { width:100%; height:100%; object-fit:cover; }
+  .tc-ov { position:absolute; inset:0; background:linear-gradient(transparent 40%,rgba(0,0,0,0.6)); }
+  .tc-r { position:absolute; top:8px; left:8px; background:rgba(0,0,0,0.5); backdrop-filter:blur(8px); padding:3px 8px; border-radius:8px; font-size:10px; font-weight:600; display:flex; align-items:center; gap:3px; }
+  .tc-f { position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; }
+  .tc-n { position:absolute; bottom:8px; left:8px; font-size:11px; font-weight:600; }
+
+  /* ═══════════════════════════════════
+     SCREEN 2: PARTY DETAIL
+     ═══════════════════════════════════ */
+  .dh { width:100%; height:300px; position:relative; overflow:hidden; }
+  .dh img { width:100%; height:100%; object-fit:cover; }
+  .dh-fade { position:absolute; bottom:0; left:0; right:0; height:180px; background:linear-gradient(transparent,var(--void)); }
+  .dh-tint { position:absolute; inset:0; }
+  .dh-tint.violet { background:linear-gradient(transparent,rgba(123,94,167,0.25)); }
+  .dn { position:absolute; top:54px; left:20px; right:20px; display:flex; justify-content:space-between; z-index:10; }
+  .dn-b { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.08); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; }
+  .dt-a { position:absolute; bottom:16px; left:20px; right:20px; z-index:10; }
+  .dt-t { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; line-height:1.2; }
+  .dt-m { font-size:12px; color:var(--text-sec); margin-top:6px; display:flex; gap:12px; align-items:center; }
+
+  /* inner tabs */
+  .it { display:flex; gap:0; margin:16px 20px; background:var(--glass); border-radius:14px; padding:4px; border:1px solid var(--border); }
+  .it-i { flex:1; text-align:center; padding:8px 0; font-size:12px; font-weight:500; color:var(--text-mut); border-radius:11px; }
+  .it-i.ac { font-weight:600; }
+  .it-i.ac.violet { background:rgba(123,94,167,0.25); color:#c4b0e0; }
+
+  /* schedule */
+  .sl { padding:8px 20px 120px; display:flex; flex-direction:column; gap:10px; }
+  .si { display:flex; gap:14px; padding:14px 16px; backdrop-filter:blur(16px); border-radius:16px; align-items:center; }
+  .si.violet { background:rgba(123,94,167,0.06); border:1px solid rgba(123,94,167,0.12); }
+  .si-t { font-size:12px; font-weight:600; color:#c4b0e0; width:52px; flex-shrink:0; text-align:center; line-height:1.3; }
+  .si-d { width:2px; height:36px; border-radius:2px; flex-shrink:0; }
+  .si-d.violet { background:linear-gradient(var(--violet),transparent); }
+  .si-info { flex:1; }
+  .si-a { font-weight:600; font-size:14px; }
+  .si-s { font-size:11px; color:var(--text-sec); margin-top:2px; }
+  .si-live { padding:3px 10px; border-radius:100px; background:rgba(192,96,122,0.25); color:var(--rose); font-size:10px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; }
+  .si-av { width:32px; height:32px; border-radius:10px; overflow:hidden; flex-shrink:0; }
+  .si-av img { width:100%; height:100%; object-fit:cover; }
+
+  /* ═══════════════════════════════════
+     SCREEN 3: SEARCH
+     ═══════════════════════════════════ */
+  .sa { padding:62px 24px 120px; }
+  .sa-t { font-family:'Syne',sans-serif; font-weight:800; font-size:32px; margin-bottom:20px; letter-spacing:-0.02em; }
+  .sa-bar { display:flex; align-items:center; gap:12px; padding:14px 18px; background:rgba(255,255,255,0.06); border:none; border-radius:14px; margin-bottom:20px; }
+  .sa-bar svg { opacity:0.35; flex-shrink:0; }
+  .sa-bar span { font-size:15px; color:var(--text-mut); font-weight:400; }
+  .sa-tog { display:flex; gap:8px; margin-bottom:20px; }
+  .tog { padding:9px 22px; border-radius:100px; font-size:14px; font-weight:500; background:rgba(255,255,255,0.05); border:none; color:rgba(255,255,255,0.4); transition:all 0.2s ease; }
+  .tog.ac { background:rgba(123,94,167,0.2); color:#c4b0e0; font-weight:600; }
+
+  .src { display:flex; gap:16px; padding:16px 0; background:none; border:none; border-radius:0; margin-bottom:0; align-items:center; border-bottom:1px solid rgba(255,255,255,0.06); }
+  .src:last-of-type { border-bottom:none; }
+  .src-img { width:72px; height:72px; border-radius:18px; overflow:hidden; flex-shrink:0; box-shadow:0 4px 20px rgba(0,0,0,0.4); }
+  .src-img img { width:100%; height:100%; object-fit:cover; }
+  .src-i { flex:1; min-width:0; }
+  .src-n { font-weight:700; font-size:17px; letter-spacing:-0.02em; line-height:1.25; }
+  .src-d { font-size:13px; color:rgba(255,255,255,0.4); margin-top:5px; font-weight:400; }
+  .src-b { padding:6px 14px; border-radius:10px; font-size:12px; font-weight:700; flex-shrink:0; border:none; letter-spacing:0.01em; }
+  .src-b.violet { background:rgba(123,94,167,0.18); color:#c4b0e0; }
+  .src-b.teal { background:rgba(61,138,122,0.18); color:#7ac4b4; }
+  .src-b.rose { background:rgba(192,96,122,0.18); color:#e0a0b0; }
+  .src-b.amber { background:rgba(196,123,58,0.18); color:#e0c4a0; }
+
+  .ur { display:flex; gap:14px; padding:14px 0; background:none; border:none; border-radius:0; margin-bottom:0; align-items:center; border-bottom:1px solid rgba(255,255,255,0.06); }
+  .ur:last-child { border-bottom:none; }
+  .ur-av { width:48px; height:48px; border-radius:50%; overflow:hidden; flex-shrink:0; box-shadow:0 2px 12px rgba(0,0,0,0.3); }
+  .ur-av img { width:100%; height:100%; object-fit:cover; }
+  .ur-i { flex:1; }
+  .ur-n { font-weight:600; font-size:15px; letter-spacing:-0.01em; }
+  .ur-r { font-size:12px; color:rgba(255,255,255,0.35); margin-top:2px; }
+  .ur-f { padding:8px 20px; border-radius:10px; font-size:13px; font-weight:600; background:rgba(123,94,167,0.2); color:#c4b0e0; border:none; flex-shrink:0; }
+
+  /* ═══════════════════════════════════
+     SCREEN 4: INBOX
+     ═══════════════════════════════════ */
+  .ix-h { padding:62px 24px 16px; }
+  .ix-t { font-family:'Syne',sans-serif; font-weight:800; font-size:28px; }
+  .ix-tabs { display:flex; gap:0; margin:0 20px 16px; background:var(--glass); border-radius:14px; padding:4px; border:1px solid var(--border); }
+  .ix-tab { flex:1; text-align:center; padding:8px 0; font-size:13px; font-weight:500; color:var(--text-mut); border-radius:11px; }
+  .ix-tab.ac { background:rgba(61,138,122,0.2); color:#7ac4b4; font-weight:600; }
+  .ix-bd { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; border-radius:8px; background:var(--rose); font-size:9px; font-weight:700; color:white; margin-left:4px; padding:0 4px; }
+  .ci { display:flex; gap:12px; padding:14px 24px; align-items:center; border-bottom:1px solid var(--border); }
+  .ci-av { width:48px; height:48px; border-radius:16px; overflow:hidden; flex-shrink:0; }
+  .ci-av img { width:100%; height:100%; object-fit:cover; }
+  .ci-c { flex:1; min-width:0; }
+  .ci-n { font-weight:600; font-size:14px; display:flex; justify-content:space-between; align-items:center; }
+  .ci-tm { font-size:11px; color:var(--text-mut); font-weight:400; }
+  .ci-p { font-size:12px; color:var(--text-sec); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ci-u { width:10px; height:10px; border-radius:50%; background:var(--teal); flex-shrink:0; }
+
+  .no-i { display:flex; gap:12px; padding:14px 24px; align-items:flex-start; border-bottom:1px solid var(--border); }
+  .no-ic { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .no-ic.nk { background:rgba(196,123,58,0.15); }
+  .no-ic.nf { background:rgba(123,94,167,0.15); }
+  .no-ic.ne { background:rgba(61,138,122,0.15); }
+  .no-t { flex:1; font-size:13px; line-height:1.4; color:var(--text-sec); }
+  .no-t strong { color:var(--text); }
+  .no-ts { font-size:10px; color:var(--text-mut); margin-top:3px; }
+
+  /* ═══════════════════════════════════
+     SCREEN 5: PROFILE
+     ═══════════════════════════════════ */
+  .pr-h { position:relative; padding:62px 24px 0; text-align:center; }
+  .pr-glow { position:absolute; top:-40px; left:50%; transform:translateX(-50%); width:300px; height:200px; background:radial-gradient(ellipse,rgba(123,94,167,0.3) 0%,transparent 70%); pointer-events:none; }
+  .pr-aw { position:relative; display:inline-block; margin-bottom:12px; }
+  .pr-ar { width:88px; height:88px; border-radius:50%; background:linear-gradient(135deg,var(--violet),var(--rose),var(--teal)); padding:3px; }
+  .pr-ai { width:100%; height:100%; border-radius:50%; overflow:hidden; }
+  .pr-ai img { width:100%; height:100%; object-fit:cover; }
+  .pr-rp { position:absolute; bottom:-4px; left:50%; transform:translateX(-50%); padding:3px 12px; border-radius:100px; font-size:10px; font-weight:700; letter-spacing:0.04em; background:linear-gradient(135deg,var(--violet),var(--rose)); color:white; white-space:nowrap; }
+  .pr-un { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; margin-top:4px; }
+  .pr-ha { font-size:13px; color:var(--text-sec); margin-top:2px; }
+  .pr-st { display:flex; justify-content:center; gap:32px; margin-top:20px; padding-bottom:20px; border-bottom:1px solid var(--border); margin-left:24px; margin-right:24px; }
+  .st-i { text-align:center; }
+  .st-n { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; }
+  .st-l { font-size:10px; color:var(--text-mut); margin-top:2px; text-transform:uppercase; letter-spacing:0.08em; }
+
+  .ks { padding:20px 24px; }
+  .ks-l { font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-mut); margin-bottom:12px; }
+  .hr { display:flex; gap:8px; margin-bottom:16px; }
+  .hc { flex:1; padding:12px 10px; border-radius:14px; text-align:center; }
+  .hc.h-r { background:rgba(192,96,122,0.1); border:1px solid rgba(192,96,122,0.2); }
+  .hc.h-v { background:rgba(123,94,167,0.1); border:1px solid rgba(123,94,167,0.2); }
+  .hc.h-t { background:rgba(61,138,122,0.1); border:1px solid rgba(61,138,122,0.2); }
+  .hc-n { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; }
+  .hc.h-r .hc-n { color:var(--rose); }
+  .hc.h-v .hc-n { color:var(--violet); }
+  .hc.h-t .hc-n { color:var(--teal); }
+  .hc-t { font-size:10px; color:var(--text-sec); margin-top:2px; }
+
+  .bw { background:var(--glass); border:1px solid var(--border); border-radius:16px; padding:14px; display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+  .bb { display:flex; gap:3px; flex:1; }
+  .bd { width:10px; height:10px; border-radius:50%; }
+  .bd.bv { background:var(--violet); }
+  .bd.br { background:var(--rose); }
+  .bd.bt { background:var(--teal); }
+  .bd.ba { background:var(--amber); }
+  .bd.bx { background:rgba(255,255,255,0.08); }
+  .bi { text-align:right; }
+  .bi-n { font-size:11px; font-weight:600; }
+  .bi-p { width:72px; height:3px; background:var(--surface2); border-radius:2px; margin-top:6px; overflow:hidden; }
+  .bi-pf { height:100%; border-radius:2px; background:linear-gradient(90deg,var(--violet),var(--rose)); }
+  .bi-c { font-size:9px; color:var(--text-mut); margin-top:3px; }
+
+  .pe { padding:0 24px 120px; }
+  .em { display:flex; gap:12px; padding:12px; background:var(--glass); border:1px solid var(--border); border-radius:14px; margin-bottom:8px; align-items:center; }
+  .em-ic { width:42px; height:42px; border-radius:12px; overflow:hidden; flex-shrink:0; }
+  .em-ic img { width:100%; height:100%; object-fit:cover; }
+  .em-i { flex:1; }
+  .em-n { font-weight:600; font-size:13px; }
+  .em-d { font-size:11px; color:var(--text-sec); margin-top:1px; }
+  .em-tag { padding:3px 8px; border-radius:6px; font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; flex-shrink:0; }
+  .tag-u { background:rgba(61,138,122,0.2); color:var(--teal); }
+  .tag-p { background:rgba(255,255,255,0.06); color:var(--text-mut); }
+
+  /* ── ANIM ── */
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  .pw { animation:fadeUp 0.8s ease both; }
+  .pw:nth-child(2){animation-delay:.1s} .pw:nth-child(3){animation-delay:.2s} .pw:nth-child(4){animation-delay:.3s} .pw:nth-child(5){animation-delay:.4s}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>PLUR Design System</h1>
+  <p>V2 — Liquid glass + adaptive color tinting with real event data. EDC Las Vegas, Ultra Miami, Beyond Wonderland, ISOKNOCK.</p>
+</div>
+
+<div class="sec"><div class="sec-l">V1 Screens — Real Events, Adaptive Glass</div></div>
+
+<div class="phones">
+
+<!-- ═══════ HOME ═══════ -->
+<div class="pw">
+<div class="pw-l">Home</div>
+<div class="ph">
+<div class="di"></div><div class="hi"></div>
+<div class="ph-in">
+  <div class="home-hero">
+    <div class="home-hero-bg"></div>
+    <div class="home-gr">
+      <div class="home-av">
+        <div class="av-ring"><div class="av-in"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face" alt=""></div></div>
+        <div><div class="gr-t">Hey, Luna</div><div class="gr-s">3 upcoming events</div></div>
+      </div>
+      <div class="bell">
+        <svg width="18" height="18" fill="none" stroke="white" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <div class="bell-d"></div>
+      </div>
+    </div>
+    <div class="home-hl">YOUR <span class="ac">PARTIES</span></div>
+  </div>
+
+  <!-- Party cards -->
+  <div class="pscroll">
+    <!-- EDC -->
+    <div class="pc violet-t">
+      <div class="pc-img"><img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=520&h=300&fit=crop" alt="EDC"></div>
+      <div class="pc-body">
+        <div class="pc-title">EDC Las Vegas 2026</div>
+        <div class="pc-meta">
+          <span>May 15–17 · 30th Anniversary</span>
+          <span>📍 Las Vegas Motor Speedway</span>
+        </div>
+        <div class="pc-row">
+          <div class="pc-avs">
+            <div class="pa"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=48&h=48&fit=crop&crop=face" alt=""></div>
+            <div class="pa"><img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=48&h=48&fit=crop&crop=face" alt=""></div>
+            <div class="pa"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=48&h=48&fit=crop&crop=face" alt=""></div>
+          </div>
+          <div class="pc-pr">SOLD OUT</div>
+        </div>
+      </div>
+    </div>
+    <!-- Ultra -->
+    <div class="pc teal-t">
+      <div class="pc-img"><img src="https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=520&h=300&fit=crop" alt="Ultra"></div>
+      <div class="pc-body">
+        <div class="pc-title">Ultra Miami 2026</div>
+        <div class="pc-meta">
+          <span>Mar 27–29 · Bayfront Park</span>
+          <span>📍 Downtown Miami, FL</span>
+        </div>
+        <div class="pc-row">
+          <div class="pc-avs">
+            <div class="pa"><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=48&h=48&fit=crop&crop=face" alt=""></div>
+            <div class="pa"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=48&h=48&fit=crop&crop=face" alt=""></div>
+          </div>
+          <div class="pc-pr">$479</div>
+        </div>
+      </div>
+    </div>
+    <!-- Beyond -->
+    <div class="pc rose-t">
+      <div class="pc-img"><img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=520&h=300&fit=crop" alt="Beyond"></div>
+      <div class="pc-body">
+        <div class="pc-title">Beyond Wonderland SoCal</div>
+        <div class="pc-meta">
+          <span>Mar 27–28 · NOS Events Center</span>
+          <span>📍 San Bernardino, CA</span>
+        </div>
+        <div class="pc-row">
+          <div class="pc-avs">
+            <div class="pa"><img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=48&h=48&fit=crop&crop=face" alt=""></div>
+          </div>
+          <div class="pc-pr">$159</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh"><div class="sh-t">Trending</div><div class="sh-l">See All</div></div>
+  <div class="tr">
+    <div class="tc">
+      <img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=200&fit=crop" alt="">
+      <div class="tc-ov"></div>
+      <div class="tc-r">⭐ 4.9</div>
+      <div class="tc-f"><svg width="14" height="14" fill="none" stroke="white" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+      <div class="tc-n">ISOKNOCK</div>
+    </div>
+    <div class="tc">
+      <img src="https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=200&fit=crop" alt="">
+      <div class="tc-ov"></div>
+      <div class="tc-r">⭐ 5.0</div>
+      <div class="tc-f"><svg width="14" height="14" fill="none" stroke="white" stroke-width="1.5" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+      <div class="tc-n">Niteharts Fest</div>
+    </div>
+  </div>
+</div>
+<div class="bn">
+  <div class="ni ac"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Home</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>Search</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>Inbox</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+</div>
+</div>
+</div>
+
+<!-- ═══════ PARTY DETAIL: EDC ═══════ -->
+<div class="pw">
+<div class="pw-l">Party · Schedule</div>
+<div class="ph">
+<div class="di"></div><div class="hi"></div>
+<div class="ph-in">
+  <div class="dh">
+    <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=750&h=600&fit=crop" alt="EDC stage">
+    <div class="dh-tint violet"></div>
+    <div class="dh-fade"></div>
+    <div class="dn">
+      <div class="dn-b"><svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></div>
+      <div class="dn-b"><svg width="16" height="16" fill="none" stroke="white" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></div>
+    </div>
+    <div class="dt-a">
+      <div class="dt-t">EDC Las Vegas<br>2026</div>
+      <div class="dt-m">
+        <span>📅 May 15–17</span>
+        <span>📍 LV Motor Speedway</span>
+        <span style="color:#c4b0e0;font-weight:600;">SOLD OUT</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="it">
+    <div class="it-i ac violet">Schedule</div>
+    <div class="it-i">Chat</div>
+    <div class="it-i">Map</div>
+    <div class="it-i">Album</div>
+  </div>
+
+  <div style="padding:4px 20px 8px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-mut);">Friday · kineticFIELD</span></div>
+
+  <div class="sl">
+    <div class="si violet">
+      <div class="si-t">7:00<br><span style="font-size:9px;opacity:0.5">PM</span></div>
+      <div class="si-d violet"></div>
+      <div class="si-info"><div class="si-a">Gates Open</div><div class="si-s">All stages</div></div>
+    </div>
+    <div class="si violet">
+      <div class="si-t">9:20<br><span style="font-size:9px;opacity:0.5">PM</span></div>
+      <div class="si-d violet"></div>
+      <div class="si-info"><div class="si-a">Martin Garrix</div><div class="si-s">kineticFIELD</div></div>
+      <div class="si-av"><img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=64&h=64&fit=crop" alt=""></div>
+    </div>
+    <div class="si violet">
+      <div class="si-t">10:45<br><span style="font-size:9px;opacity:0.5">PM</span></div>
+      <div class="si-d violet"></div>
+      <div class="si-info"><div class="si-a">Charlotte de Witte</div><div class="si-s">kineticFIELD</div></div>
+      <div class="si-live">LIVE</div>
+    </div>
+    <div class="si violet">
+      <div class="si-t">12:15<br><span style="font-size:9px;opacity:0.5">AM</span></div>
+      <div class="si-d violet"></div>
+      <div class="si-info"><div class="si-a">FISHER</div><div class="si-s">kineticFIELD</div></div>
+    </div>
+    <div class="si violet">
+      <div class="si-t">1:45<br><span style="font-size:9px;opacity:0.5">AM</span></div>
+      <div class="si-d violet"></div>
+      <div class="si-info"><div class="si-a">Tiësto</div><div class="si-s">kineticFIELD</div></div>
+    </div>
+    <div class="si violet">
+      <div class="si-t">3:15<br><span style="font-size:9px;opacity:0.5">AM</span></div>
+      <div class="si-d violet"></div>
+      <div class="si-info"><div class="si-a">ISOKNOCK</div><div class="si-s">circuitGROUNDS</div></div>
+      <div class="si-av"><img src="https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=64&h=64&fit=crop" alt=""></div>
+    </div>
+  </div>
+</div>
+<div class="bn">
+  <div class="ni ac"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Home</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>Search</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>Inbox</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+</div>
+</div>
+</div>
+
+<!-- ═══════ SEARCH ═══════ -->
+<div class="pw">
+<div class="pw-l">Search</div>
+<div class="ph">
+<div class="di"></div><div class="hi"></div>
+<div class="ph-in">
+  <div class="sa">
+    <div class="sa-t">Search</div>
+    <div class="sa-bar">
+      <svg width="18" height="18" fill="none" stroke="white" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <span>Events, artists, people...</span>
+    </div>
+    <div class="sa-tog"><div class="tog ac">Events</div><div class="tog">People</div></div>
+
+    <div class="src">
+      <div class="src-img"><img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=160&h=160&fit=crop" alt="EDC"></div>
+      <div class="src-i"><div class="src-n">EDC Las Vegas 2026</div><div class="src-d">May 15–17 · LV Motor Speedway</div></div>
+      <div class="src-b violet">SOLD OUT</div>
+    </div>
+    <div class="src">
+      <div class="src-img"><img src="https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=160&h=160&fit=crop" alt="Ultra"></div>
+      <div class="src-i"><div class="src-n">Ultra Miami 2026</div><div class="src-d">Mar 27–29 · Bayfront Park, Miami</div></div>
+      <div class="src-b teal">$479</div>
+    </div>
+    <div class="src">
+      <div class="src-img"><img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=160&h=160&fit=crop" alt="Beyond"></div>
+      <div class="src-i"><div class="src-n">Beyond Wonderland SoCal</div><div class="src-d">Mar 27–28 · NOS Events Center</div></div>
+      <div class="src-b rose">$159</div>
+    </div>
+    <div class="src">
+      <div class="src-img"><img src="https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=160&h=160&fit=crop" alt="ISOKNOCK"></div>
+      <div class="src-i"><div class="src-n">ISOKNOCK Tour 2026</div><div class="src-d">ISOxo & Knock2 · Multiple cities</div></div>
+      <div class="src-b amber">$65+</div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div class="sa-tog"><div class="tog">Events</div><div class="tog ac">People</div></div>
+      <div class="ur">
+        <div class="ur-av"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=88&h=88&fit=crop&crop=face" alt=""></div>
+        <div class="ur-i"><div class="ur-n">@djmarcus</div><div class="ur-r">Kandi Kid III · 186 kandi</div></div>
+        <div class="ur-f">Follow</div>
+      </div>
+      <div class="ur">
+        <div class="ur-av"><img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=88&h=88&fit=crop&crop=face" alt=""></div>
+        <div class="ur-i"><div class="ur-n">@ravequeen_</div><div class="ur-r">Perler I · 412 kandi</div></div>
+        <div class="ur-f">Follow</div>
+      </div>
+      <div class="ur">
+        <div class="ur-av"><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=88&h=88&fit=crop&crop=face" alt=""></div>
+        <div class="ur-i"><div class="ur-n">@bassdropkid</div><div class="ur-r">Bracelet V · 98 kandi</div></div>
+        <div class="ur-f">Follow</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="bn">
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Home</span></div>
+  <div class="ni ac"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>Search</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>Inbox</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+</div>
+</div>
+</div>
+
+<!-- ═══════ INBOX ═══════ -->
+<div class="pw">
+<div class="pw-l">Inbox</div>
+<div class="ph">
+<div class="di"></div><div class="hi"></div>
+<div class="ph-in">
+  <div class="ix-h"><div class="ix-t">Inbox</div></div>
+  <div class="ix-tabs">
+    <div class="ix-tab ac">Chats <span class="ix-bd">3</span></div>
+    <div class="ix-tab">Notifications</div>
+  </div>
+
+  <div class="ci">
+    <div class="ci-av"><img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=96&h=96&fit=crop" alt="EDC"></div>
+    <div class="ci-c">
+      <div class="ci-n">EDC Crew 🎡 <span class="ci-tm">2m</span></div>
+      <div class="ci-p">Marcus: yo who's driving to the speedway??</div>
+    </div>
+    <div class="ci-u"></div>
+  </div>
+  <div class="ci">
+    <div class="ci-av"><img src="https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=96&h=96&fit=crop" alt="Ultra"></div>
+    <div class="ci-c">
+      <div class="ci-n">Ultra Squad 🌴 <span class="ci-tm">1h</span></div>
+      <div class="ci-p">Jess: airbnb in Brickell confirmed for all 6 of us</div>
+    </div>
+    <div class="ci-u"></div>
+  </div>
+  <div class="ci">
+    <div class="ci-av"><img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=96&h=96&fit=crop" alt="Beyond"></div>
+    <div class="ci-c">
+      <div class="ci-n">Beyond Gang 🐇 <span class="ci-tm">3h</span></div>
+      <div class="ci-p">You: just copped the 2-day pass let's gooo</div>
+    </div>
+  </div>
+  <div class="ci">
+    <div class="ci-av"><img src="https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=96&h=96&fit=crop" alt="ISOKNOCK"></div>
+    <div class="ci-c">
+      <div class="ci-n">ISOKNOCK Fam 🔥 <span class="ci-tm">1d</span></div>
+      <div class="ci-p">Alex: niteharts festival presale code is THRASH</div>
+    </div>
+  </div>
+
+  <div style="padding:24px 24px 8px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-mut);">Recent Notifications</span></div>
+  <div class="no-i">
+    <div class="no-ic nk">🔶</div>
+    <div><div class="no-t"><strong>@djmarcus</strong> gave you kandi — "best energy all night 🙌"</div><div class="no-ts">2 hours ago</div></div>
+  </div>
+  <div class="no-i">
+    <div class="no-ic nf">💜</div>
+    <div><div class="no-t"><strong>@ravequeen_</strong> started following you</div><div class="no-ts">5 hours ago</div></div>
+  </div>
+  <div class="no-i">
+    <div class="no-ic ne">🎪</div>
+    <div><div class="no-t"><strong>EDC Las Vegas</strong> 30th anniversary lineup dropped — 200+ artists</div><div class="no-ts">Yesterday</div></div>
+  </div>
+  <div class="no-i">
+    <div class="no-ic nk">🔶</div>
+    <div><div class="no-t"><strong>@bassdropkid</strong> gave you kandi — "ISOKNOCK set was insane w you"</div><div class="no-ts">2 days ago</div></div>
+  </div>
+</div>
+<div class="bn">
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Home</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>Search</span></div>
+  <div class="ni ac"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>Inbox</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+</div>
+</div>
+</div>
+
+<!-- ═══════ PROFILE ═══════ -->
+<div class="pw">
+<div class="pw-l">Profile</div>
+<div class="ph">
+<div class="di"></div><div class="hi"></div>
+<div class="ph-in">
+  <div class="pr-h">
+    <div class="pr-glow"></div>
+    <div class="pr-aw">
+      <div class="pr-ar"><div class="pr-ai"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face" alt="Luna"></div></div>
+      <div class="pr-rp">KANDI KID III</div>
+    </div>
+    <div class="pr-un">Luna</div>
+    <div class="pr-ha">@lunawaves</div>
+  </div>
+
+  <div class="pr-st">
+    <div class="st-i"><div class="st-n">186</div><div class="st-l">Kandi</div></div>
+    <div class="st-i"><div class="st-n">24</div><div class="st-l">Events</div></div>
+    <div class="st-i"><div class="st-n">847</div><div class="st-l">Following</div></div>
+  </div>
+
+  <div class="ks">
+    <div class="ks-l">Honors</div>
+    <div class="hr">
+      <div class="hc h-r"><div class="hc-n">89</div><div class="hc-t">Good Vibes</div></div>
+      <div class="hc h-v"><div class="hc-n">54</div><div class="hc-t">Helpful</div></div>
+      <div class="hc h-t"><div class="hc-n">43</div><div class="hc-t">Style</div></div>
+    </div>
+
+    <div class="ks-l">Bracelet</div>
+    <div class="bw">
+      <div class="bb">
+        <div class="bd bv"></div><div class="bd br"></div><div class="bd bx"></div>
+        <div class="bd bt"></div><div class="bd bv"></div><div class="bd ba"></div>
+        <div class="bd bx"></div><div class="bd br"></div><div class="bd bv"></div>
+        <div class="bd bt"></div><div class="bd bx"></div><div class="bd br"></div>
+        <div class="bd ba"></div><div class="bd bv"></div><div class="bd bx"></div>
+        <div class="bd bt"></div>
+      </div>
+      <div class="bi">
+        <div class="bi-n">III → IV</div>
+        <div class="bi-p"><div class="bi-pf" style="width:74%"></div></div>
+        <div class="bi-c">186 / 250</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pe">
+    <div class="ks-l">Upcoming</div>
+    <div class="em">
+      <div class="em-ic"><img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=84&h=84&fit=crop" alt="EDC"></div>
+      <div class="em-i"><div class="em-n">EDC Las Vegas 2026</div><div class="em-d">May 15–17 · LV Motor Speedway</div></div>
+      <div class="em-tag tag-u">May</div>
+    </div>
+    <div class="em">
+      <div class="em-ic"><img src="https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=84&h=84&fit=crop" alt="ISOKNOCK"></div>
+      <div class="em-i"><div class="em-n">ISOKNOCK · Cow Palace</div><div class="em-d">Apr 4 · Daly City, CA</div></div>
+      <div class="em-tag tag-u">Apr</div>
+    </div>
+
+    <div class="ks-l" style="margin-top:16px;">Past</div>
+    <div class="em">
+      <div class="em-ic"><img src="https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=84&h=84&fit=crop" alt="Ultra"></div>
+      <div class="em-i"><div class="em-n">Ultra Miami 2026</div><div class="em-d">Mar 27–29 · Bayfront Park</div></div>
+      <div class="em-tag tag-p">Mar</div>
+    </div>
+    <div class="em">
+      <div class="em-ic"><img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=84&h=84&fit=crop" alt="Beyond"></div>
+      <div class="em-i"><div class="em-n">Beyond Wonderland SoCal</div><div class="em-d">Mar 27–28 · NOS Events</div></div>
+      <div class="em-tag tag-p">Mar</div>
+    </div>
+  </div>
+</div>
+<div class="bn">
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span>Home</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><span>Search</span></div>
+  <div class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>Inbox</span></div>
+  <div class="ni ac"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Profile</span></div>
+</div>
+</div>
+</div>
+
+</div><!-- phones -->
+</body>
+</html>

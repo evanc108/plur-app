@@ -5,25 +5,50 @@ struct RavesView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.isLoading && viewModel.events.isEmpty {
-                    ProgressView("Loading events…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let error = viewModel.errorMessage, viewModel.events.isEmpty {
-                    ContentUnavailableView {
-                        Label("Unable to Load", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") {
-                            Task { await viewModel.loadEvents() }
+            ZStack {
+                Color.plurVoid.ignoresSafeArea()
+
+                Group {
+                    if viewModel.isLoading && viewModel.events.isEmpty {
+                        ProgressView("Loading events…")
+                            .tint(Color.plurViolet)
+                            .foregroundStyle(Color.plurMuted)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let error = viewModel.errorMessage, viewModel.events.isEmpty {
+                        VStack(spacing: Spacing.lg) {
+                            Spacer()
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 44))
+                                .foregroundStyle(Color.plurFaint)
+                            Text("Unable to Load")
+                                .font(.plurH2())
+                                .foregroundStyle(Color.plurGhost)
+                            Text(error)
+                                .font(.plurBody())
+                                .foregroundStyle(Color.plurMuted)
+                                .multilineTextAlignment(.center)
+                            Button("Retry") {
+                                Task { await viewModel.loadEvents() }
+                            }
+                            .buttonStyle(PLURButtonStyle())
+                            .padding(.horizontal, Spacing.xxxl)
+                            Spacer()
                         }
+                        .padding(.horizontal, Spacing.xl)
+                    } else {
+                        eventList
                     }
-                } else {
-                    eventList
                 }
             }
-            .navigationTitle("Raves")
+            .navigationTitle("")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Text("RAVES")
+                        .font(.plurHeading(24))
+                        .foregroundStyle(Color.plurGhost)
+                }
+            }
+            .toolbarBackground(.hidden, for: .navigationBar)
             .task {
                 if viewModel.events.isEmpty {
                     await viewModel.loadEvents()
@@ -33,11 +58,12 @@ struct RavesView: View {
                 await viewModel.loadEvents()
             }
         }
+        .preferredColorScheme(.dark)
     }
 
     private var eventList: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            LazyVStack(spacing: Spacing.sm) {
                 ForEach(groupedEvents, id: \.date) { group in
                     Section {
                         ForEach(group.events) { event in
@@ -53,23 +79,25 @@ struct RavesView: View {
 
                 if viewModel.isLoadingMore {
                     ProgressView()
+                        .tint(Color.plurViolet)
                         .padding()
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.bottom, Spacing.lg)
         }
     }
 
     private func sectionHeader(for dateString: String) -> some View {
         HStack {
             Text(Self.formatSectionDate(dateString))
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
+                .font(.plurMicro())
+                .foregroundStyle(Color.plurMuted)
+                .tracking(1.5)
             Spacer()
         }
-        .padding(.top, 16)
-        .padding(.bottom, 4)
+        .padding(.top, Spacing.md)
+        .padding(.bottom, Spacing.xxs)
     }
 
     private var groupedEvents: [EventGroup] {
@@ -80,6 +108,7 @@ struct RavesView: View {
 
     private static let displayFormatter: DateFormatter = {
         let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "EEEE, MMM d"
         return f
     }()
@@ -103,61 +132,61 @@ private struct EventCard: View {
     let event: EDMTrainEvent
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                Text(event.displayName)
-                    .font(.headline)
-                    .lineLimit(2)
+        GlassCard(tint: event.isFestival ? Color.plurViolet : nil) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                HStack(alignment: .top) {
+                    Text(event.displayName)
+                        .font(.plurH3())
+                        .foregroundStyle(Color.plurGhost)
+                        .lineLimit(2)
 
-                Spacer()
+                    Spacer()
 
-                if event.isFestival {
-                    Text("Festival")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(.purple.opacity(0.2))
-                        .foregroundStyle(.purple)
-                        .clipShape(Capsule())
+                    if event.isFestival {
+                        Text("Festival")
+                            .font(.plurMicro())
+                            .padding(.horizontal, Spacing.xs)
+                            .padding(.vertical, Spacing.xxs)
+                            .background(Color.plurViolet.opacity(0.2))
+                            .foregroundStyle(Color.plurViolet)
+                            .clipShape(Capsule())
+                    }
                 }
-            }
 
-            if event.name != nil, let artists = event.artistList, !artists.isEmpty {
-                Text(artists.map(\.name).joined(separator: " · "))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
+                if event.name != nil, let artists = event.artistList, !artists.isEmpty {
+                    Text(artists.map(\.name).joined(separator: " · "))
+                        .font(.plurCaption())
+                        .foregroundStyle(Color.plurMuted)
+                        .lineLimit(2)
+                }
 
-            if let venue = event.venue {
-                HStack(spacing: 4) {
-                    Image(systemName: "mappin.circle.fill")
-                        .foregroundStyle(.red)
-                        .font(.caption)
-                    Text(venue.name)
-                        .font(.subheadline)
-                    if let location = venue.location {
-                        Text("· \(location)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                if let venue = event.venue {
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: "mappin.circle.fill")
+                            .foregroundStyle(Color.plurRose)
+                            .font(.plurCaption())
+                        Text(venue.name)
+                            .font(.plurCaption())
+                            .foregroundStyle(Color.plurGhost)
+                        if let location = venue.location {
+                            Text("· \(location)")
+                                .font(.plurCaption())
+                                .foregroundStyle(Color.plurMuted)
+                        }
+                    }
+                }
+
+                if let ages = event.ages, !ages.isEmpty {
+                    HStack(spacing: Spacing.xxs) {
+                        Image(systemName: "person.fill")
+                            .font(.plurMicro())
+                            .foregroundStyle(Color.plurFaint)
+                        Text(ages)
+                            .font(.plurMicro())
+                            .foregroundStyle(Color.plurFaint)
                     }
                 }
             }
-
-            if let ages = event.ages, !ages.isEmpty {
-                HStack(spacing: 4) {
-                    Image(systemName: "person.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(ages)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
         }
-        .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

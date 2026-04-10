@@ -1,6 +1,6 @@
 import Foundation
 
-struct AppUser: Codable, Identifiable {
+struct AppUser: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var username: String
     var displayName: String

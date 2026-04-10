@@ -1,6 +1,6 @@
 import Foundation
 
-struct Rave: Codable, Identifiable {
+struct Rave: Codable, Identifiable, Hashable, Sendable {
     let id: Int
     var name: String
     var date: Date
@@ -20,7 +20,7 @@ struct Rave: Codable, Identifiable {
     }
 }
 
-struct Artist: Codable, Identifiable {
+struct Artist: Codable, Identifiable, Hashable, Sendable {
     let id: Int
     var name: String
     var startTime: Date?

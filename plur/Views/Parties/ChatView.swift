@@ -2,7 +2,8 @@ import SwiftUI
 
 struct ChatView: View {
     let party: RaveGroup
-    @Bindable var viewModel: PartyViewModel
+    let partyVM: PartyViewModel
+    @Bindable var chatVM: ChatViewModel
     @State private var draft = ""
     @State private var isSending = false
     @State private var showSendError = false
@@ -10,7 +11,7 @@ struct ChatView: View {
     @FocusState private var isInputFocused: Bool
 
     private var allMessages: [Message] {
-        viewModel.messages[party.id] ?? []
+        chatVM.messages[party.id] ?? []
     }
 
     private var pinnedMessages: [Message] {
@@ -28,10 +29,10 @@ struct ChatView: View {
                     ForEach(allMessages) { message in
                         MessageBubble(
                             message: message,
-                            currentUserId: viewModel.currentUserId
+                            currentUserId: partyVM.currentUserId
                         ) {
                             Task {
-                                await viewModel.togglePin(messageID: message.id, in: party.id)
+                                await chatVM.togglePin(messageID: message.id, in: party.id)
                             }
                         }
                     }
@@ -47,10 +48,10 @@ struct ChatView: View {
         }
         .background(Color.plurVoid)
         .task {
-            await viewModel.loadMessages(for: party.id)
-            await viewModel.observeMessages(for: party.id)
+            await chatVM.loadMessages(for: party.id)
+            await chatVM.observeMessages(for: party.id)
         }
-        .onChange(of: viewModel.chatError) { _, newValue in
+        .onChange(of: chatVM.chatError) { _, newValue in
             guard let newValue, !newValue.isEmpty else { return }
             sendErrorMessage = newValue
             showSendError = true
@@ -112,7 +113,12 @@ struct ChatView: View {
                 let content = draft
                 isSending = true
                 Task {
-                    let ok = await viewModel.sendMessage(content: content, in: party.id)
+                    let ok = await chatVM.sendMessage(
+                        content: content,
+                        in: party.id,
+                        userId: partyVM.currentUserId ?? UUID(),
+                        displayName: partyVM.currentUserDisplayName
+                    )
                     if ok { draft = "" }
                     isSending = false
                 }

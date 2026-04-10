@@ -1,6 +1,6 @@
 import Foundation
 
-struct Message: Codable, Identifiable {
+struct Message: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var groupId: UUID
     var userId: UUID
@@ -20,6 +20,7 @@ struct Message: Codable, Identifiable {
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "h:mm a"
         return f
     }()

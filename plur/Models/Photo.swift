@@ -1,6 +1,6 @@
 import Foundation
 
-struct Photo: Codable, Identifiable {
+struct Photo: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var groupId: UUID
     var userId: UUID

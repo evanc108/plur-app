@@ -239,7 +239,7 @@ struct CreatePartyView: View {
         defer { isLoadingEvents = false }
 
         do {
-            let fetched = try await EDMTrainClient().fetchEvents(EventRequest())
+            let fetched = try await EDMTrainClient.shared.fetchEvents(EventRequest())
             edmEvents = fetched
         } catch {
             createErrorMessage = error.localizedDescription

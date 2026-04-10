@@ -18,7 +18,10 @@ enum PartyTab: String, CaseIterable {
 
 struct PartyDetailView: View {
     let party: RaveGroup
-    @Bindable var viewModel: PartyViewModel
+    @Bindable var partyVM: PartyViewModel
+    @Bindable var chatVM: ChatViewModel
+    @Bindable var photosVM: PhotosViewModel
+    @Bindable var scheduleVM: ScheduleViewModel
     @State private var selectedTab: PartyTab = .schedule
 
     var body: some View {
@@ -87,13 +90,13 @@ struct PartyDetailView: View {
     private var tabContent: some View {
         switch selectedTab {
         case .board:
-            BoardView(party: party, viewModel: viewModel)
+            BoardView(party: party, partyVM: partyVM, chatVM: chatVM)
         case .chat:
-            ChatView(party: party, viewModel: viewModel)
+            ChatView(party: party, partyVM: partyVM, chatVM: chatVM)
         case .schedule:
-            ScheduleView(party: party, viewModel: viewModel)
+            ScheduleView(party: party, partyVM: partyVM, scheduleVM: scheduleVM)
         case .photos:
-            PhotosView(party: party, viewModel: viewModel)
+            PhotosView(party: party, partyVM: partyVM, photosVM: photosVM)
         }
     }
 }

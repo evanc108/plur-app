@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - API Responses
 
-struct EDMTrainResponse<T: Codable>: Codable {
+struct EDMTrainResponse<T: Codable & Sendable>: Codable, Sendable {
     let data: T
     let success: Bool
     let message: String?
@@ -10,7 +10,7 @@ struct EDMTrainResponse<T: Codable>: Codable {
 
 // MARK: - Event
 
-struct EDMTrainEvent: Codable, Identifiable, Hashable {
+struct EDMTrainEvent: Codable, Identifiable, Hashable, Sendable {
     let id: Int
     let name: String?
     let date: String
@@ -49,7 +49,7 @@ struct EDMTrainEvent: Codable, Identifiable, Hashable {
 
 // MARK: - Venue
 
-struct EDMTrainVenue: Codable, Identifiable, Hashable {
+struct EDMTrainVenue: Codable, Identifiable, Hashable, Sendable {
     let id: Int
     let name: String
     let location: String?
@@ -62,7 +62,7 @@ struct EDMTrainVenue: Codable, Identifiable, Hashable {
 
 // MARK: - Artist
 
-struct EDMTrainArtist: Codable, Identifiable, Hashable {
+struct EDMTrainArtist: Codable, Identifiable, Hashable, Sendable {
     let id: Int
     let name: String
     let link: String?
@@ -71,7 +71,7 @@ struct EDMTrainArtist: Codable, Identifiable, Hashable {
 
 // MARK: - Location
 
-struct EDMTrainLocation: Codable, Identifiable, Hashable {
+struct EDMTrainLocation: Codable, Identifiable, Hashable, Sendable {
     let id: Int
     let city: String
     let state: String

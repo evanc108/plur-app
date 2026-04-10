@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 @main
-struct plurApp: App {
+struct PLURApp: App {
     private let modelContainer: ModelContainer
     private let scheduleCacheStore: ScheduleCacheStore
 
@@ -14,9 +14,13 @@ struct plurApp: App {
             CachedSetSelectionsPayload.self,
         ])
         let configuration = ModelConfiguration(isStoredInMemoryOnly: false)
-        let container = try! ModelContainer(for: schema, configurations: [configuration])
-        modelContainer = container
-        scheduleCacheStore = ScheduleCacheStore(modelContext: container.mainContext)
+        do {
+            let container = try ModelContainer(for: schema, configurations: [configuration])
+            modelContainer = container
+            scheduleCacheStore = ScheduleCacheStore(modelContext: container.mainContext)
+        } catch {
+            fatalError("Failed to create ModelContainer: \(error.localizedDescription)")
+        }
     }
 
     var body: some Scene {
